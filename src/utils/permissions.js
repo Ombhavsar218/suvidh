@@ -1,0 +1,88 @@
+export const ROLES = {
+  ADMIN: 'Admin',
+  STORE: 'Store',
+  PRODUCTION: 'Production',
+  QUALITY: 'Quality',
+};
+
+export const ROLE_DESCRIPTIONS = {
+  Admin: 'Full access across all ERP modules, user management, finance, reports, and system settings.',
+  Store: 'Raw material catalog, warehouse inward/outward, reservations, purchases, and store inventory reports.',
+  Production: 'Production planning, daily production execution, machine capacity/schedules, and production analytics.',
+  Quality: 'Material & finished goods quality inspections, batch accept/reject decisions, and quality reports.',
+};
+
+// Route paths permitted per role (UI demonstration only — backend must enforce real authorization)
+export const ROLE_ALLOWED_MODULES = {
+  Admin: [
+    'dashboard',
+    'customers',
+    'products',
+    'bom',
+    'materials',
+    'machines',
+    'suppliers',
+    'schedules',
+    'inventory',
+    'purchases',
+    'production-planning',
+    'production-execution',
+    'quality-control',
+    'finished-goods',
+    'sales-orders',
+    'dispatch',
+    'billing',
+    'finance',
+    'reports',
+    'production-analytics',
+    'inventory-analytics',
+    'notifications',
+    'users',
+    'settings',
+  ],
+  Store: [
+    'dashboard',
+    'materials',
+    'suppliers',
+    'inventory',
+    'purchases',
+    'finished-goods',
+    'dispatch',
+    'inventory-analytics',
+    'reports',
+    'notifications',
+    'settings',
+  ],
+  Production: [
+    'dashboard',
+    'products',
+    'bom',
+    'machines',
+    'schedules',
+    'inventory',
+    'production-planning',
+    'production-execution',
+    'finished-goods',
+    'production-analytics',
+    'reports',
+    'notifications',
+    'settings',
+  ],
+  Quality: [
+    'dashboard',
+    'products',
+    'materials',
+    'inventory',
+    'production-execution',
+    'quality-control',
+    'finished-goods',
+    'reports',
+    'notifications',
+    'settings',
+  ],
+};
+
+export function hasModuleAccess(role, moduleKey) {
+  const allowed = ROLE_ALLOWED_MODULES[role] || ROLE_ALLOWED_MODULES.Admin;
+  return allowed.includes(moduleKey);
+}

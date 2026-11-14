@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { Tooltip } from '../../components/common/Tooltip';
 import { DataTable } from '../../components/tables/DataTable';
 import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
@@ -168,7 +169,7 @@ export function PurchasesPage() {
       key: 'poNumber',
       label: 'PO Number',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs font-semibold text-[#2563EB]">{r.poNumber}</span>,
+      render: (r) => <span className="font-mono text-xs font-semibold text-[#081F62]">{r.poNumber}</span>,
     },
     { key: 'supplierName', label: 'Supplier', sortable: true },
     {
@@ -211,23 +212,27 @@ export function PurchasesPage() {
       align: 'right',
       render: (r) => (
         <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => navigate(`/purchases/${r.id}`)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="View PO Details"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          {r.status === 'Draft' && (
+          <Tooltip content="View PO Details">
             <button
               type="button"
-              onClick={(e) => openEditDraft(r, e)}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-              title="Edit Draft PO"
+              onClick={() => navigate(`/purchases/${r.id}`)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="View PO Details"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5" />
             </button>
+          </Tooltip>
+          {r.status === 'Draft' && (
+            <Tooltip content="Edit Draft PO">
+              <button
+                type="button"
+                onClick={(e) => openEditDraft(r, e)}
+                className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+                aria-label="Edit Draft PO"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       ),
@@ -246,7 +251,7 @@ export function PurchasesPage() {
         }
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -363,10 +368,10 @@ export function PurchasesPage() {
                 Add Material
               </SecondaryButton>
             </div>
-            <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-x-auto">
+            <div className="border border-[#535F80]/30 dark:border-slate-700 rounded-md overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  <tr className="bg-slate-50 dark:bg-slate-800 border-b border-[#535F80]/30 dark:border-slate-700">
                     <th className="px-3 py-2 font-semibold">Raw Material</th>
                     <th className="px-3 py-2 font-semibold w-28">Quantity</th>
                     <th className="px-3 py-2 font-semibold w-20">Unit</th>
@@ -382,7 +387,7 @@ export function PurchasesPage() {
                         <select
                           value={item.materialId}
                           onChange={(e) => updateLineItem(idx, 'materialId', e.target.value)}
-                          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                          className="w-full px-2 py-1.5 rounded border border-[#535F80]/30 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-xs"
                         >
                           {materials.map((m) => (
                             <option key={m.id} value={m.id}>
@@ -397,7 +402,7 @@ export function PurchasesPage() {
                           min="1"
                           value={item.orderedQty}
                           onChange={(e) => updateLineItem(idx, 'orderedQty', e.target.value)}
-                          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs tabular-nums"
+                          className="w-full px-2 py-1.5 rounded border border-[#535F80]/30 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-xs tabular-nums"
                         />
                       </td>
                       <td className="p-2 text-slate-500 font-medium">{item.uom}</td>
@@ -407,7 +412,7 @@ export function PurchasesPage() {
                           min="0"
                           value={item.unitPrice}
                           onChange={(e) => updateLineItem(idx, 'unitPrice', e.target.value)}
-                          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs tabular-nums"
+                          className="w-full px-2 py-1.5 rounded border border-[#535F80]/30 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-xs tabular-nums"
                         />
                       </td>
                       <td className="p-2 text-right font-semibold tabular-nums">
@@ -427,7 +432,7 @@ export function PurchasesPage() {
                 </tbody>
               </table>
             </div>
-            <div className="flex justify-end mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+            <div className="flex justify-end mt-3 text-sm font-semibold text-[#051747] dark:text-slate-100 tabular-nums">
               Total PO Amount: {formatCurrency(draftTotal)}
             </div>
           </div>

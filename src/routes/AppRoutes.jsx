@@ -1,16 +1,20 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { ShieldAlert } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { hasModuleAccess } from '../utils/permissions';
 import { PrimaryButton } from '../components/common/Buttons';
 import { LoadingState } from '../components/common/States';
+import { AppLayout } from '../components/layout/AppLayout';
+import { LoginPage } from '../pages/auth/LoginPage';
+import { DashboardPage } from '../pages/dashboard/DashboardPage';
+import { ChangelogPage } from '../pages/system/ChangelogPage';
 
-const DashboardPage = lazy(() =>
-  import('../pages/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage }))
-);
 const CustomersPage = lazy(() =>
   import('../pages/customers/CustomersPage').then((m) => ({ default: m.CustomersPage }))
+);
+const CustomerFormPage = lazy(() =>
+  import('../pages/customers/CustomerFormPage').then((m) => ({ default: m.CustomerFormPage }))
 );
 const CustomerDetailPage = lazy(() =>
   import('../pages/customers/CustomerDetailPage').then((m) => ({ default: m.CustomerDetailPage }))
@@ -23,6 +27,9 @@ const ProductDetailPage = lazy(() =>
 );
 const BomPage = lazy(() =>
   import('../pages/bom/BomPage').then((m) => ({ default: m.BomPage }))
+);
+const BomFormPage = lazy(() =>
+  import('../pages/bom/BomFormPage').then((m) => ({ default: m.BomFormPage }))
 );
 const MaterialsPage = lazy(() =>
   import('../pages/materials/MaterialsPage').then((m) => ({ default: m.MaterialsPage }))
@@ -138,16 +145,43 @@ function RoleGate({ moduleKey, children }) {
   );
 }
 
+function ProtectedLayout() {
+  const { isAuthenticated } = useApp();
+  const location = useLocation();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+
+  return (
+    <AppLayout>
+      <Suspense fallback={<LoadingState message="Loading module..." />}>
+        <Outlet />
+      </Suspense>
+    </AppLayout>
+  );
+}
+
 export function AppRoutes() {
   return (
-    <Suspense fallback={<LoadingState message="Loading module..." />}>
-      <Routes>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+
+      <Route element={<ProtectedLayout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
 
         <Route
           path="/customers"
           element={<RoleGate moduleKey="customers"><CustomersPage /></RoleGate>}
+        />
+        <Route
+          path="/customers/new"
+          element={<RoleGate moduleKey="customers"><CustomerFormPage /></RoleGate>}
+        />
+        <Route
+          path="/customers/:id/edit"
+          element={<RoleGate moduleKey="customers"><CustomerFormPage /></RoleGate>}
         />
         <Route
           path="/customers/:id"
@@ -166,6 +200,14 @@ export function AppRoutes() {
         <Route
           path="/bom"
           element={<RoleGate moduleKey="bom"><BomPage /></RoleGate>}
+        />
+        <Route
+          path="/bom/new"
+          element={<RoleGate moduleKey="bom"><BomFormPage /></RoleGate>}
+        />
+        <Route
+          path="/bom/:id/edit"
+          element={<RoleGate moduleKey="bom"><BomFormPage /></RoleGate>}
         />
         <Route
           path="/materials"
@@ -256,12 +298,16 @@ export function AppRoutes() {
           element={<RoleGate moduleKey="users"><UsersPage /></RoleGate>}
         />
         <Route
+          path="/changelog"
+          element={<RoleGate moduleKey="changelog"><ChangelogPage /></RoleGate>}
+        />
+        <Route
           path="/settings"
           element={<RoleGate moduleKey="settings"><SettingsPage /></RoleGate>}
         />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </Suspense>
+      </Route>
+    </Routes>
   );
 }

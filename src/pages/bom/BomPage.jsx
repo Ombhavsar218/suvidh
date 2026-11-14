@@ -1,162 +1,110 @@
 import { useState, useMemo } from 'react';
-import { Plus, Eye, Edit2, Trash2, Layers } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Plus,
+  Eye,
+  Edit2,
+  Trash2,
+  Layers,
+  ShieldCheck,
+  Boxes,
+  Clock,
+  LayoutGrid,
+  List,
+  ArrowRight,
+  X,
+  Sparkles,
+  Package,
+} from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { Modal } from '../../components/common/Modal';
+import { Tooltip } from '../../components/common/Tooltip';
+import { ConfirmationDialog } from '../../components/common/ConfirmationDialog';
 import { DataTable } from '../../components/tables/DataTable';
-import { SearchInput } from '../../components/forms/Filters';
-import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
+import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
+import { StatCard } from '../../components/dashboard/StatCard';
+import { Pagination } from '../../components/common/Pagination';
+import { EmptyState } from '../../components/common/States';
 import { useErpData } from '../../context/ErpDataContext';
 import { useTableState } from '../../hooks/useTableState';
 import { formatDate } from '../../utils/formatters';
 
+function getInitials(name) {
+  if (!name) return 'BM';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export function BomPage() {
-  const { boms, products, materials, saveBom } = useErpData();
-  const [editorOpen, setEditorOpen] = useState(false);
+  const navigate = useNavigate();
+  const { boms = [], products = [], materials = [], deleteBom } = useErpData();
   const [viewerBom, setViewerBom] = useState(null);
-  const [formError, setFormError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
 
-  const [form, setForm] = useState({
-    id: '',
-    productId: '',
-    version: 'Rev 1.0',
-    notes: '',
-    items: [],
-  });
-
+  // Enriched BOM records
   const enrichedBoms = useMemo(() => {
     return boms.map((b) => {
       const prod = products.find((p) => p.id === b.productId);
+      const materialNames = b.items
+        .map((i) => {
+          const m = materials.find((mat) => mat.id === i.materialId);
+          return m ? `${m.name} (${i.qtyPerUnit} ${i.uom})` : null;
+        })
+        .filter(Boolean);
+
       return {
         ...b,
         productCode: prod?.code || b.productId,
         productName: prod?.name || 'Unknown Product',
+        productCategory: prod?.category || 'Standard',
         productUom: prod?.uom || 'Nos',
         componentCount: b.items.length,
+        materialsPreview: materialNames.join(' · '),
       };
     });
-  }, [boms, products]);
+  }, [boms, products, materials]);
+
+  // KPI Calculations
+  const uniqueMaterialsCount = useMemo(() => {
+    const matIds = new Set();
+    boms.forEach((b) => b.items.forEach((i) => matIds.add(i.materialId)));
+    return matIds.size;
+  }, [boms]);
+
+  const avgComponents = useMemo(() => {
+    if (boms.length === 0) return 0;
+    const total = boms.reduce((acc, b) => acc + b.items.length, 0);
+    return (total / boms.length).toFixed(1);
+  }, [boms]);
+
+  const productCategories = useMemo(
+    () => Array.from(new Set(products.map((p) => p.category).filter(Boolean))),
+    [products]
+  );
 
   const table = useTableState(enrichedBoms, {
     initialPageSize: 8,
     initialSortKey: 'productCode',
-    searchFields: ['productCode', 'productName', 'version', 'notes'],
+    searchFields: ['id', 'productCode', 'productName', 'productCategory', 'version', 'notes'],
   });
 
-  const openCreate = () => {
-    const firstMaterial = materials[0];
-    setForm({
-      id: '',
-      productId: products.find((p) => !boms.some((b) => b.productId === p.id))?.id || products[0]?.id || '',
-      version: 'Rev 1.0',
-      notes: '',
-      items: firstMaterial
-        ? [
-            {
-              id: `BI-${Date.now()}`,
-              materialId: firstMaterial.id,
-              qtyPerUnit: 1,
-              uom: firstMaterial.uom,
-              specification: firstMaterial.spec || '',
-            },
-          ]
-        : [],
-    });
-    setFormError('');
-    setEditorOpen(true);
-  };
-
-  const openEdit = (bom, e) => {
-    e?.stopPropagation();
-    setForm({
-      id: bom.id,
-      productId: bom.productId,
-      version: bom.version,
-      notes: bom.notes || '',
-      items: bom.items.map((i) => ({ ...i })),
-    });
-    setFormError('');
-    setEditorOpen(true);
-  };
-
-  const addBomRow = () => {
-    const unused = materials.find(
-      (m) => !form.items.some((item) => item.materialId === m.id)
-    ) || materials[0];
-    if (!unused) return;
-    setForm((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          id: `BI-${Date.now()}-${prev.items.length}`,
-          materialId: unused.id,
-          qtyPerUnit: 1,
-          uom: unused.uom,
-          specification: unused.spec || '',
-        },
-      ],
-    }));
-  };
-
-  const updateBomRow = (index, field, value) => {
-    setForm((prev) => {
-      const nextItems = prev.items.map((row, idx) => {
-        if (idx !== index) return row;
-        if (field === 'materialId') {
-          const mat = materials.find((m) => m.id === value);
-          return {
-            ...row,
-            materialId: value,
-            uom: mat?.uom || row.uom,
-            specification: mat?.spec || row.specification,
-          };
-        }
-        return { ...row, [field]: value };
-      });
-      return { ...prev, items: nextItems };
-    });
-  };
-
-  const removeBomRow = (index) => {
-    setForm((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, idx) => idx !== index),
-    }));
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!form.productId) {
-      setFormError('Please select a finished product.');
-      return;
-    }
-    if (form.items.length === 0) {
-      setFormError('At least one raw material component row is required.');
-      return;
-    }
-    const invalidRow = form.items.find((i) => !i.materialId || Number(i.qtyPerUnit) <= 0);
-    if (invalidRow) {
-      setFormError('All BOM component rows must have a valid material and quantity > 0.');
-      return;
-    }
-
-    saveBom({
-      ...form,
-      items: form.items.map((i) => ({
-        ...i,
-        qtyPerUnit: Number(i.qtyPerUnit),
-      })),
-    });
-    setEditorOpen(false);
-  };
+  const hasActiveFilters = Boolean(table.search || table.filters.productCategory);
 
   const columns = [
     {
       key: 'id',
       label: 'BOM ID',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs font-semibold">{r.id}</span>,
+      width: '130px',
+      cellClassName: 'whitespace-nowrap',
+      render: (r) => (
+        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap inline-block">
+          {r.id}
+        </span>
+      ),
     },
     {
       key: 'productName',
@@ -164,8 +112,15 @@ export function BomPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-medium text-slate-900 dark:text-slate-100">{r.productName}</div>
-          <div className="text-[11px] font-mono text-slate-500">{r.productCode}</div>
+          <div className="font-medium text-[#051747] dark:text-slate-100">{r.productName}</div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="font-mono text-[11px] text-[#535F80] dark:text-slate-400">
+              {r.productCode}
+            </span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded border border-[#535F80]/15 bg-[#E7E9F0]/60 text-[#051747] dark:bg-slate-800 dark:text-slate-300">
+              {r.productCategory}
+            </span>
+          </div>
         </div>
       ),
     },
@@ -173,7 +128,7 @@ export function BomPage() {
       key: 'version',
       label: 'Revision',
       render: (r) => (
-        <span className="px-2 py-0.5 text-xs rounded bg-blue-50 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-300 font-medium">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-[#081F62] border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900/60">
           {r.version}
         </span>
       ),
@@ -181,210 +136,386 @@ export function BomPage() {
     {
       key: 'componentCount',
       label: 'Raw Materials',
-      align: 'center',
-      numeric: true,
-      render: (r) => `${r.componentCount} item${r.componentCount === 1 ? '' : 's'}`,
+      render: (r) => (
+        <div className="text-xs max-w-xs">
+          <div className="font-semibold text-[#051747] dark:text-slate-200 flex items-center gap-1">
+            <Boxes className="w-3.5 h-3.5 text-[#535F80]" />
+            <span>{r.componentCount} components</span>
+          </div>
+          <div className="text-[11px] text-[#535F80] dark:text-slate-400 truncate mt-0.5" title={r.materialsPreview}>
+            {r.materialsPreview || 'No components assigned'}
+          </div>
+        </div>
+      ),
     },
     {
       key: 'updatedAt',
       label: 'Last Updated',
       sortable: true,
-      render: (r) => formatDate(r.updatedAt),
+      render: (r) => (
+        <div className="text-xs text-slate-600 dark:text-slate-300 tabular-nums flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5 text-[#535F80]" />
+          <span>{formatDate(r.updatedAt)}</span>
+        </div>
+      ),
     },
     {
       key: 'actions',
       label: 'Actions',
-      align: 'right',
+      align: 'left',
       render: (r) => (
-        <div className="inline-flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => setViewerBom(r)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="View BOM"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => openEdit(r, e)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="Edit BOM"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
+        <div className="inline-flex items-center justify-start gap-1" onClick={(e) => e.stopPropagation()}>
+          <Tooltip content="View BOM Structure">
+            <button
+              type="button"
+              onClick={() => setViewerBom(r)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="View BOM Structure"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Edit BOM">
+            <button
+              type="button"
+              onClick={() => navigate(`/bom/${r.id}/edit`)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="Edit BOM"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Delete BOM">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(r)}
+              className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
+              aria-label="Delete BOM"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
         </div>
       ),
     },
   ];
 
   return (
-    <div>
+    <div className="space-y-5">
       <PageHeader
         title="Bill of Materials (BOM)"
-        description="Define exact raw material quantities and specifications required per unit of finished product."
+        description="Engineering product structures, multi-level raw material consumption, and unit production specifications."
         actions={
-          <PrimaryButton icon={Plus} onClick={openCreate}>
+          <PrimaryButton icon={Plus} onClick={() => navigate('/bom/new')}>
             Create BOM
           </PrimaryButton>
         }
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
-        <SearchInput
-          value={table.search}
-          onChange={table.setSearch}
-          placeholder="Search finished product, BOM revision..."
-          className="w-full sm:w-80"
+      {/* Top Level Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Active BOMs"
+          value={boms.length}
+          sublabel="Configured structures"
+          icon={Layers}
+          tone="navy"
         />
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          Used automatically in Production Planning for BOM material requirement & shortage checks.
-        </span>
+        <StatCard
+          label="Catalog Coverage"
+          value={`${boms.length}/${products.length}`}
+          sublabel={`${products.length > 0 ? Math.round((boms.length / products.length) * 100) : 0}% products configured`}
+          icon={ShieldCheck}
+          tone="emerald"
+        />
+        <StatCard
+          label="Raw Materials Linked"
+          value={uniqueMaterialsCount}
+          sublabel="Unique raw component types"
+          icon={Boxes}
+          tone="amber"
+        />
+        <StatCard
+          label="Avg Parts / Product"
+          value={avgComponents}
+          sublabel="Components per assembly"
+          icon={Sparkles}
+          tone="slate"
+        />
       </div>
 
-      <DataTable
-        columns={columns}
-        data={table.paginatedData}
-        sortKey={table.sortKey}
-        sortDir={table.sortDir}
-        onSort={table.handleSort}
-        onRowClick={(r) => setViewerBom(r)}
-        pagination={{
-          page: table.page,
-          totalPages: table.totalPages,
-          totalItems: table.totalItems,
-          pageSize: table.pageSize,
-          onPageChange: table.setPage,
-          onPageSizeChange: table.setPageSize,
-        }}
-      />
-
-      {/* Editable BOM Modal */}
-      <Modal
-        isOpen={editorOpen}
-        onClose={() => setEditorOpen(false)}
-        title={form.id ? `Edit BOM (${form.id})` : 'Create Bill of Materials'}
-        subtitle="Add or remove raw material rows and specify unit consumption."
-        size="xl"
-        footer={
-          <>
-            <SecondaryButton onClick={() => setEditorOpen(false)}>Cancel</SecondaryButton>
-            <PrimaryButton onClick={handleSave}>Save BOM</PrimaryButton>
-          </>
-        }
-      >
-        <form onSubmit={handleSave} className="space-y-4">
-          {formError && (
-            <div className="p-3 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
-              {formError}
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormSelect
-              label="Finished Product"
-              name="productId"
-              required
-              value={form.productId}
-              onChange={(e) => setForm({ ...form, productId: e.target.value })}
-              options={products.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
-            />
-            <FormInput
-              label="BOM Revision"
-              name="version"
-              required
-              value={form.version}
-              onChange={(e) => setForm({ ...form, version: e.target.value })}
-            />
-          </div>
-
-          <FormTextarea
-            label="Engineering Notes"
-            name="notes"
-            rows={2}
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+      {/* Control & Filter Toolbar */}
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+          <SearchInput
+            value={table.search}
+            onChange={table.setSearch}
+            placeholder="Search BOM ID, finished product, revision, notes..."
+            className="w-full sm:w-96 md:w-[420px] lg:w-[480px]"
           />
+          <FilterDropdown
+            label="Product Category"
+            value={table.filters.productCategory}
+            onChange={(val) => table.setFilter('productCategory', val)}
+            options={productCategories}
+          />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={table.resetFilters}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 bg-[#E7E9F0]/60 dark:bg-slate-800 rounded-md cursor-pointer transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+              Reset Filters
+            </button>
+          )}
+        </div>
 
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-[#535F80] dark:text-slate-400 hidden sm:inline">
+            Showing <strong className="text-[#051747] dark:text-slate-200">{table.totalItems}</strong> BOM structure{table.totalItems === 1 ? '' : 's'}
+          </span>
+          <div className="inline-flex items-center rounded-lg border border-[#535F80]/25 dark:border-slate-800 p-0.5 bg-[#FEFEFE] dark:bg-slate-900">
+            <Tooltip content="Card View">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-[#051747] text-[#FEFEFE] shadow-2xs'
+                    : 'text-[#535F80] hover:text-[#051747] dark:hover:text-slate-200'
+                }`}
+                aria-label="Card View"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            <Tooltip content="Table View">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                  viewMode === 'table'
+                    ? 'bg-[#051747] text-[#FEFEFE] shadow-2xs'
+                    : 'text-[#535F80] hover:text-[#051747] dark:hover:text-slate-200'
+                }`}
+                aria-label="Table View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content: Card Grid View or Table View */}
+      {viewMode === 'grid' ? (
+        table.paginatedData.length === 0 ? (
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-xl p-8">
+            <EmptyState
+              icon={Layers}
+              title="No Bill of Materials match your criteria"
+              description="Try adjusting your search terms or clearing your filters to see configured BOM records."
+              action={
+                hasActiveFilters ? (
+                  <SecondaryButton onClick={table.resetFilters}>
+                    Clear Filters
+                  </SecondaryButton>
+                ) : (
+                  <PrimaryButton icon={Plus} onClick={() => navigate('/bom/new')}>
+                    Create BOM
+                  </PrimaryButton>
+                )
+              }
+            />
+          </div>
+        ) : (
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Required Raw Materials (Per 1 Unit Output)
-              </h4>
-              <SecondaryButton size="sm" icon={Plus} onClick={addBomRow}>
-                Add Material Row
-              </SecondaryButton>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {table.paginatedData.map((b) => {
+                return (
+                  <div
+                    key={b.id}
+                    className="group relative bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 hover:border-[#081F62]/60 dark:hover:border-blue-500/60 rounded-xl p-5 shadow-2xs hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                  >
+                    <div>
+                      {/* Top Row: Product Initials, Name, BOM ID & Rev */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-lg bg-[#051747] dark:bg-slate-800 text-[#FEFEFE] dark:text-slate-100 font-bold text-xs flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                            {getInitials(b.productName)}
+                          </div>
+                          <div className="min-w-0">
+                            <h3
+                              className="font-semibold text-sm text-[#051747] dark:text-slate-100 group-hover:text-[#081F62] dark:group-hover:text-blue-400 transition-colors truncate"
+                              title={b.productName}
+                            >
+                              {b.productName}
+                            </h3>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="font-mono text-[11px] font-semibold text-[#535F80] dark:text-slate-400 bg-[#E7E9F0]/60 dark:bg-slate-800/80 px-2 py-0.5 rounded whitespace-nowrap inline-block">
+                                {b.id}
+                              </span>
+                              <span className="font-mono text-[11px] text-slate-500 truncate">
+                                {b.productCode}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-[#081F62] border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-900/60 shrink-0">
+                          {b.version}
+                        </span>
+                      </div>
+
+                      {/* Product Category & Engineering Notes */}
+                      <div className="mt-3.5 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#E7E9F0]/70 text-[#051747] dark:bg-slate-800 dark:text-slate-300 border border-[#535F80]/15">
+                          {b.productCategory}
+                        </span>
+                        <span className="text-[11px] font-medium text-[#535F80] dark:text-slate-400 font-mono bg-[#E7E9F0]/60 dark:bg-slate-800 px-2 py-0.5 rounded">
+                          Unit: 1 {b.productUom}
+                        </span>
+                      </div>
+
+                      {/* Notes Box */}
+                      <div className="mt-3 p-2.5 rounded-lg bg-[#E7E9F0]/40 dark:bg-slate-800/50 border border-[#535F80]/10 dark:border-slate-800 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                        <Layers className="w-3.5 h-3.5 text-[#081F62] shrink-0 mt-0.5" />
+                        <span className="line-clamp-2 leading-relaxed" title={b.notes}>
+                          {b.notes || 'Standard manufacturing assembly structure with raw material bill.'}
+                        </span>
+                      </div>
+
+                      {/* Micro-Stats: Component Count, Unit, Last Update */}
+                      <div className="mt-4 bg-[#E7E9F0]/40 dark:bg-slate-800/60 border border-[#535F80]/10 dark:border-slate-800 rounded-lg p-2.5 grid grid-cols-3 gap-2 text-center">
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase font-semibold text-[#535F80] dark:text-slate-400 truncate flex items-center justify-center gap-1">
+                            <Boxes className="w-3 h-3 text-[#535F80]" /> Materials
+                          </p>
+                          <p className="text-xs font-bold text-[#051747] dark:text-slate-100 tabular-nums mt-0.5">
+                            {b.items.length} items
+                          </p>
+                        </div>
+                        <div className="min-w-0 border-x border-[#535F80]/15 dark:border-slate-700/60 px-1">
+                          <p className="text-[10px] uppercase font-semibold text-[#535F80] dark:text-slate-400 truncate flex items-center justify-center gap-1">
+                            <Package className="w-3 h-3 text-[#535F80]" /> Output
+                          </p>
+                          <p className="text-xs font-bold text-[#051747] dark:text-slate-100 tabular-nums mt-0.5 truncate">
+                            1 {b.productUom}
+                          </p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase font-semibold text-[#535F80] dark:text-slate-400 truncate flex items-center justify-center gap-1">
+                            <Clock className="w-3 h-3 text-[#535F80]" /> Updated
+                          </p>
+                          <p className="text-xs font-bold text-[#051747] dark:text-slate-100 tabular-nums mt-0.5 truncate" title={formatDate(b.updatedAt)}>
+                            {formatDate(b.updatedAt)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Top 3 Component Chips */}
+                      <div className="mt-3 space-y-1.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400">
+                          Raw Component Inputs:
+                        </span>
+                        <div className="space-y-1">
+                          {b.items.slice(0, 3).map((item) => {
+                            const mat = materials.find((m) => m.id === item.materialId);
+                            return (
+                              <div
+                                key={item.id}
+                                className="flex items-center justify-between text-xs px-2 py-1 rounded bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/15"
+                              >
+                                <span className="font-medium text-[#051747] dark:text-slate-200 truncate max-w-[180px]">
+                                  {mat?.name || item.materialId}
+                                </span>
+                                <span className="font-mono text-[11px] text-[#535F80] dark:text-slate-400 font-semibold tabular-nums">
+                                  {item.qtyPerUnit} {item.uom}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {b.items.length > 3 && (
+                            <div className="text-[11px] text-[#535F80] dark:text-slate-400 font-medium pl-1">
+                              +{b.items.length - 3} more component{b.items.length - 3 === 1 ? '' : 's'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Actions Footer */}
+                    <div
+                      className="mt-4 pt-3 border-t border-[#E7E9F0] dark:border-slate-800 flex items-center justify-between gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setViewerBom(b)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-[#081F62] hover:text-[#051747] dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
+                      >
+                        <span>View Structure</span>
+                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+
+                      <div className="inline-flex items-center gap-1">
+                        <Tooltip content="Edit BOM">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/bom/${b.id}/edit`)}
+                            className="p-1.5 rounded hover:bg-[#E7E9F0]/80 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+                            aria-label="Edit BOM"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Delete BOM">
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(b)}
+                            className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
+                            aria-label="Delete BOM"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">Raw Material</th>
-                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 w-28">Qty / Product</th>
-                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300 w-20">Unit</th>
-                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-300">Material Specifications</th>
-                    <th className="px-3 py-2 w-12" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {form.items.map((row, idx) => (
-                    <tr key={row.id || idx}>
-                      <td className="p-2">
-                        <select
-                          value={row.materialId}
-                          onChange={(e) => updateBomRow(idx, 'materialId', e.target.value)}
-                          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                        >
-                          {materials.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.code} — {m.name}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0.01"
-                          value={row.qtyPerUnit}
-                          onChange={(e) => updateBomRow(idx, 'qtyPerUnit', e.target.value)}
-                          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs tabular-nums"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-                          {row.uom}
-                        </span>
-                      </td>
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={row.specification}
-                          onChange={(e) => updateBomRow(idx, 'specification', e.target.value)}
-                          placeholder="Tolerance, cut length, grade..."
-                          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                        />
-                      </td>
-                      <td className="p-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => removeBomRow(idx)}
-                          className="p-1 text-slate-400 hover:text-red-600 cursor-pointer"
-                          title="Remove row"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Pagination Controls for Card View */}
+            <div className="mt-5 bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg overflow-hidden shadow-2xs">
+              <Pagination
+                page={table.page}
+                totalPages={table.totalPages}
+                totalItems={table.totalItems}
+                pageSize={table.pageSize}
+                onPageChange={table.setPage}
+                onPageSizeChange={table.setPageSize}
+              />
             </div>
           </div>
-        </form>
-      </Modal>
+        )
+      ) : (
+        <DataTable
+          columns={columns}
+          data={table.paginatedData}
+          sortKey={table.sortKey}
+          sortDir={table.sortDir}
+          onSort={table.handleSort}
+          pagination={{
+            page: table.page,
+            totalPages: table.totalPages,
+            totalItems: table.totalItems,
+            pageSize: table.pageSize,
+            onPageChange: table.setPage,
+            onPageSizeChange: table.setPageSize,
+          }}
+        />
+      )}
 
       {/* View BOM Modal */}
       <Modal
@@ -399,9 +530,9 @@ export function BomPage() {
             <PrimaryButton
               icon={Edit2}
               onClick={() => {
-                const target = viewerBom;
+                const targetId = viewerBom.id;
                 setViewerBom(null);
-                openEdit(target);
+                navigate(`/bom/${targetId}/edit`);
               }}
             >
               Edit BOM
@@ -411,40 +542,44 @@ export function BomPage() {
       >
         {viewerBom && (
           <div className="space-y-4">
-            <div className="flex items-start gap-2.5 p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 text-xs text-slate-600 dark:text-slate-300">
-              <Layers className="w-4 h-4 text-[#2563EB] shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 p-3 rounded-lg bg-[#E7E9F0]/55 dark:bg-slate-800/50 border border-[#535F80]/15 text-xs text-slate-600 dark:text-slate-300">
+              <Layers className="w-4 h-4 text-[#081F62] shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-slate-800 dark:text-slate-100">
+                <span className="font-semibold text-[#051747] dark:text-slate-100">
                   Engineering Notes:
                 </span>{' '}
-                {viewerBom.notes || 'Standard production BOM.'}
+                {viewerBom.notes || 'Standard manufacturing assembly structure with raw material consumption specification.'}
               </div>
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden">
+            <div className="border border-[#535F80]/20 dark:border-slate-700 rounded-lg overflow-hidden shadow-2xs">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                    <th className="px-3 py-2 font-semibold">Material Code</th>
-                    <th className="px-3 py-2 font-semibold">Raw Material</th>
-                    <th className="px-3 py-2 font-semibold text-right">Qty / Unit</th>
-                    <th className="px-3 py-2 font-semibold">Unit</th>
-                    <th className="px-3 py-2 font-semibold">Specifications</th>
+                  <tr className="bg-[#E7E9F0]/70 dark:bg-slate-800 border-b border-[#535F80]/20 dark:border-slate-700">
+                    <th className="px-3 py-2.5 font-semibold text-[#051747] dark:text-slate-200">Material Code</th>
+                    <th className="px-3 py-2.5 font-semibold text-[#051747] dark:text-slate-200">Raw Material</th>
+                    <th className="px-3 py-2.5 font-semibold text-[#051747] dark:text-slate-200 text-right">Qty / Unit</th>
+                    <th className="px-3 py-2.5 font-semibold text-[#051747] dark:text-slate-200">Unit</th>
+                    <th className="px-3 py-2.5 font-semibold text-[#051747] dark:text-slate-200">Specifications</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                <tbody className="divide-y divide-[#E7E9F0] dark:divide-slate-700">
                   {viewerBom.items.map((item) => {
                     const mat = materials.find((m) => m.id === item.materialId);
                     return (
-                      <tr key={item.id}>
-                        <td className="px-3 py-2.5 font-mono font-semibold">{mat?.code}</td>
-                        <td className="px-3 py-2.5 font-medium">{mat?.name}</td>
-                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold">
+                      <tr key={item.id} className="hover:bg-[#E7E9F0]/30 dark:hover:bg-slate-800/30">
+                        <td className="px-3 py-2.5 font-mono font-semibold text-[#081F62] dark:text-blue-400">
+                          {mat?.code || '—'}
+                        </td>
+                        <td className="px-3 py-2.5 font-medium text-[#051747] dark:text-slate-100">
+                          {mat?.name || item.materialId}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums font-bold text-[#051747] dark:text-slate-200">
                           {item.qtyPerUnit}
                         </td>
-                        <td className="px-3 py-2.5">{item.uom}</td>
-                        <td className="px-3 py-2.5 text-slate-500 dark:text-slate-400">
-                          {item.specification}
+                        <td className="px-3 py-2.5 font-mono text-slate-500">{item.uom}</td>
+                        <td className="px-3 py-2.5 text-[#535F80] dark:text-slate-400">
+                          {item.specification || 'Standard cut specification'}
                         </td>
                       </tr>
                     );
@@ -455,6 +590,22 @@ export function BomPage() {
           </div>
         )}
       </Modal>
+
+      {/* Delete Confirmation */}
+      <ConfirmationDialog
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteBom(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Bill of Materials"
+        message={`Are you sure you want to permanently delete BOM structure "${deleteTarget?.id}" for "${deleteTarget?.productName}"?`}
+        confirmLabel="Delete BOM"
+        variant="danger"
+      />
     </div>
   );
 }

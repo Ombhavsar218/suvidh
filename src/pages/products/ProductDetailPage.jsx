@@ -48,8 +48,8 @@ export function ProductDetailPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-3">
+          <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
             Product Specifications
           </h3>
           <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -67,11 +67,11 @@ export function ProductDetailPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5">
+        <div className="lg:col-span-2 bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-[#2563EB]" />
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <Cpu className="w-4 h-4 text-[#081F62]" />
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
                 Compatible Machines ({compatibleMachines.length})
               </h3>
             </div>
@@ -81,13 +81,13 @@ export function ProductDetailPage() {
               <div
                 key={m.id}
                 onClick={() => navigate(`/machines/${m.id}`)}
-                className="p-3 rounded-md border border-slate-200 dark:border-slate-800 hover:border-[#2563EB]/60 cursor-pointer"
+                className="p-3 rounded-md border border-[#535F80]/20 dark:border-slate-800 hover:border-[#081F62]/60 cursor-pointer"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] font-semibold text-[#2563EB]">{m.code}</span>
+                  <span className="font-mono text-[11px] font-semibold text-[#081F62]">{m.code}</span>
                   <StatusBadge status={m.status} size="xs" />
                 </div>
-                <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 mt-1">
+                <div className="text-xs font-semibold text-[#051747] dark:text-slate-100 mt-1">
                   {m.name}
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5 tabular-nums">
@@ -103,8 +103,8 @@ export function ProductDetailPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#2563EB]" />
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <Layers className="w-4 h-4 text-[#081F62]" />
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
               Bill of Materials {bom ? `(${bom.version})` : ''}
             </h3>
           </div>
@@ -146,8 +146,8 @@ export function ProductDetailPage() {
       {/* Finished Goods Stock */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <PackageCheck className="w-4 h-4 text-[#2563EB]" />
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <PackageCheck className="w-4 h-4 text-[#081F62]" />
+          <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
             Finished Goods Batches ({fgBatches.length})
           </h3>
         </div>

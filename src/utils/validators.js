@@ -75,3 +75,48 @@ export function validateScheduleRow(row, customers, products, existingSchedules)
     productName: productMatch?.name || row.productName || row.productCode,
   };
 }
+
+const ALLOWED_PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
+const ALLOWED_CUSTOMER_STATUSES = ['Active', 'Inactive'];
+
+export function validateCustomerImportRow(row, existingCustomers = []) {
+  const errors = [];
+
+  const code = String(row.code || '').trim();
+  const name = String(row.name || '').trim();
+  const contactPerson = String(row.contactPerson || '').trim();
+  const email = String(row.email || '').trim();
+  const phone = String(row.phone || '').trim();
+  const address = String(row.address || '').trim();
+  const priorityTier = String(row.priorityTier || 'High').trim();
+  const status = String(row.status || 'Active').trim();
+
+  if (!code) errors.push('Missing Customer Code');
+  if (!name) errors.push('Missing Customer Name');
+  if (!contactPerson) errors.push('Missing Contact Person');
+
+  const emailErr = validateEmail(email);
+  if (emailErr) errors.push(emailErr.replace(/\.$/, ''));
+
+  if (!phone) errors.push('Missing Phone');
+  if (!address) errors.push('Missing Address');
+
+  if (!ALLOWED_PRIORITIES.includes(priorityTier)) {
+    errors.push(`Invalid Priority (${priorityTier})`);
+  }
+  if (!ALLOWED_CUSTOMER_STATUSES.includes(status)) {
+    errors.push(`Invalid Status (${status})`);
+  }
+
+  const duplicateInExisting = existingCustomers.some(
+    (c) =>
+      (code && c.code.toLowerCase() === code.toLowerCase()) ||
+      (name && c.name.toLowerCase() === name.toLowerCase())
+  );
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    isDuplicateExisting: duplicateInExisting,
+  };
+}

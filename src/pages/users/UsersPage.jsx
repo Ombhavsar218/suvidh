@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Plus, Edit2, Shield } from 'lucide-react';
+import { Plus, Edit2 /* , Shield */ } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { Tooltip } from '../../components/common/Tooltip';
 import { DataTable } from '../../components/tables/DataTable';
 import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { FormInput, FormSelect } from '../../components/forms/FormFields';
 import { useErpData } from '../../context/ErpDataContext';
-import { useApp } from '../../context/AppContext';
+// import { useApp } from '../../context/AppContext';
 import { useTableState } from '../../hooks/useTableState';
-import { ROLES, ROLE_DESCRIPTIONS } from '../../utils/permissions';
+// import { ROLES, ROLE_DESCRIPTIONS } from '../../utils/permissions';
 import { validateRequired, validateEmail } from '../../utils/validators';
 
 const EMPTY_USER = {
@@ -24,7 +25,7 @@ const EMPTY_USER = {
 
 export function UsersPage() {
   const { users, saveUser } = useErpData();
-  const { activeRole, switchRole } = useApp();
+  // const { activeRole, switchRole } = useApp();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_USER);
   const [errors, setErrors] = useState({});
@@ -70,7 +71,7 @@ export function UsersPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-medium text-slate-900 dark:text-slate-100">{r.name}</div>
+          <div className="font-medium text-[#051747] dark:text-slate-100">{r.name}</div>
           <div className="text-[11px] text-slate-500">{r.email}</div>
         </div>
       ),
@@ -81,7 +82,7 @@ export function UsersPage() {
       label: 'Assigned Role',
       sortable: true,
       render: (r) => (
-        <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-50 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-300">
+        <span className="px-2 py-0.5 text-xs font-medium rounded bg-blue-50 text-[#081F62] dark:bg-blue-950/60 dark:text-blue-300">
           {r.role}
         </span>
       ),
@@ -94,14 +95,16 @@ export function UsersPage() {
       label: 'Actions',
       align: 'right',
       render: (r) => (
-        <button
-          type="button"
-          onClick={() => openEdit(r)}
-          className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-          title="Edit User"
-        >
-          <Edit2 className="w-3.5 h-3.5" />
-        </button>
+        <Tooltip content="Edit User">
+          <button
+            type="button"
+            onClick={() => openEdit(r)}
+            className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+            aria-label="Edit User"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+          </button>
+        </Tooltip>
       ),
     },
   ];
@@ -118,15 +121,15 @@ export function UsersPage() {
         }
       />
 
-      {/* Demo Role Switcher Card */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5">
+      {/* Demo Role Switcher Card (Commented out)
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              <Shield className="w-4 h-4 text-[#2563EB]" />
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#051747] dark:text-slate-100">
+              <Shield className="w-4 h-4 text-[#081F62]" />
               Demo Role Switcher (Frontend UI Demonstration)
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <p className="text-xs text-[#535F80] dark:text-slate-400 mt-1">
               Preview how sidebar modules adapt per operational role. Note: Frontend role checks are for UI demonstration only; real permissions must be enforced by the backend API.
             </p>
           </div>
@@ -138,8 +141,8 @@ export function UsersPage() {
                 onClick={() => switchRole(role)}
                 className={`px-3.5 py-1.5 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
                   activeRole === role
-                    ? 'bg-[#2563EB] text-white border-[#2563EB]'
-                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                    ? 'bg-[#081F62] text-white border-[#081F62]'
+                    : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-[#535F80]/30 dark:border-slate-700 hover:bg-slate-100'
                 }`}
               >
                 {role}
@@ -154,18 +157,19 @@ export function UsersPage() {
               key={role}
               className={`p-3 rounded-md border text-xs ${
                 activeRole === role
-                  ? 'border-[#2563EB] bg-blue-50/50 dark:bg-blue-950/20'
-                  : 'border-slate-200 dark:border-slate-800'
+                  ? 'border-[#081F62] bg-blue-50/50 dark:bg-blue-950/20'
+                  : 'border-[#535F80]/20 dark:border-slate-800'
               }`}
             >
-              <div className="font-semibold text-slate-900 dark:text-slate-100">{role}</div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{desc}</p>
+              <div className="font-semibold text-[#051747] dark:text-slate-100">{role}</div>
+              <p className="text-[11px] text-[#535F80] dark:text-slate-400 mt-1">{desc}</p>
             </div>
           ))}
         </div>
       </div>
+      */}
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}

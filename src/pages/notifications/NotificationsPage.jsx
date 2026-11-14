@@ -53,7 +53,7 @@ export function NotificationsPage() {
         }
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <FilterDropdown
             label="Category"
@@ -73,7 +73,7 @@ export function NotificationsPage() {
         </span>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg divide-y divide-slate-200 dark:divide-slate-800">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg divide-y divide-[#E7E9F0] dark:divide-slate-800">
         {filtered.length === 0 ? (
           <EmptyState
             icon={Bell}
@@ -93,7 +93,7 @@ export function NotificationsPage() {
                 ? 'text-red-600 bg-red-50 dark:bg-red-950/50'
                 : n.severity === 'warning'
                 ? 'text-amber-600 bg-amber-50 dark:bg-amber-950/50'
-                : 'text-[#2563EB] bg-blue-50 dark:bg-blue-950/50';
+                : 'text-[#081F62] bg-blue-50 dark:bg-blue-950/50';
 
             return (
               <div
@@ -108,11 +108,11 @@ export function NotificationsPage() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      <h4 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
                         {n.title}
                       </h4>
                       {!n.read && (
-                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-[#2563EB] dark:bg-blue-950 dark:text-blue-300">
+                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-[#081F62] dark:bg-blue-950 dark:text-blue-300">
                           Unread
                         </span>
                       )}

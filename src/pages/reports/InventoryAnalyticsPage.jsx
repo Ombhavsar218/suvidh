@@ -87,7 +87,7 @@ export function InventoryAnalyticsPage() {
       <ChartCard
         title="Material Stock Allocation Breakdown"
         subtitle="Available unreserved vs reserved vs pending QC inspection"
-        height="h-80"
+        height="h-56"
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={stockChartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
@@ -104,7 +104,7 @@ export function InventoryAnalyticsPage() {
       </ChartCard>
 
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">
+        <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 mb-3">
           Finished Goods Usable Availability Summary
         </h3>
         <DataTable

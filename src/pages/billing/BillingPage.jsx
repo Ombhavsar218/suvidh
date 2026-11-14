@@ -111,7 +111,7 @@ export function BillingPage() {
       key: 'documentNumber',
       label: 'Document No.',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs font-semibold text-[#2563EB]">{r.documentNumber}</span>,
+      render: (r) => <span className="font-mono text-xs font-semibold text-[#081F62]">{r.documentNumber}</span>,
     },
     {
       key: 'customerName',
@@ -161,7 +161,7 @@ export function BillingPage() {
             setProofDoc(r);
             setPayAmount(String(r.balance || ''));
           }}
-          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-[#535F80]/30 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
         >
           <Eye className="w-3 h-3" />
           Proof Doc
@@ -182,7 +182,7 @@ export function BillingPage() {
         }
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -306,17 +306,17 @@ export function BillingPage() {
       >
         {proofDoc && (
           <div className="space-y-4 text-xs">
-            <div className="p-4 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
-              <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-700 pb-3">
+            <div className="p-4 rounded-md border border-[#535F80]/30 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
+              <div className="flex justify-between items-start border-b border-[#535F80]/30 dark:border-slate-700 pb-3">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <h4 className="text-sm font-bold text-[#051747] dark:text-slate-100">
                     {settings.companyName}
                   </h4>
                   <p className="text-slate-500">{settings.address}</p>
                   <p className="text-[11px] text-slate-400 mt-1">{proofDoc.documentType}</p>
                 </div>
                 <div className="text-right">
-                  <div className="font-mono font-bold text-sm text-[#2563EB]">
+                  <div className="font-mono font-bold text-sm text-[#081F62]">
                     {proofDoc.documentNumber}
                   </div>
                   <div className="text-slate-500">Issued: {formatDate(proofDoc.issueDate)}</div>
@@ -327,7 +327,7 @@ export function BillingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-slate-400 uppercase text-[10px] font-semibold">Bill / Deliver To</span>
-                  <p className="font-semibold text-slate-800 dark:text-slate-100 mt-0.5">
+                  <p className="font-semibold text-[#051747] dark:text-slate-100 mt-0.5">
                     {proofDoc.customerName}
                   </p>
                   <p className="text-slate-500">{proofDoc.customerAddress}</p>
@@ -339,13 +339,13 @@ export function BillingPage() {
                 </div>
               </div>
 
-              <table className="w-full text-left border-collapse border border-slate-200 dark:border-slate-700">
+              <table className="w-full text-left border-collapse border border-[#535F80]/30 dark:border-slate-700">
                 <thead>
                   <tr className="bg-slate-100 dark:bg-slate-800">
-                    <th className="p-2 border-b border-slate-200 dark:border-slate-700">Item Description</th>
-                    <th className="p-2 border-b border-slate-200 dark:border-slate-700 text-right">Qty</th>
-                    <th className="p-2 border-b border-slate-200 dark:border-slate-700 text-right">Rate</th>
-                    <th className="p-2 border-b border-slate-200 dark:border-slate-700 text-right">Amount</th>
+                    <th className="p-2 border-b border-[#535F80]/30 dark:border-slate-700">Item Description</th>
+                    <th className="p-2 border-b border-[#535F80]/30 dark:border-slate-700 text-right">Qty</th>
+                    <th className="p-2 border-b border-[#535F80]/30 dark:border-slate-700 text-right">Rate</th>
+                    <th className="p-2 border-b border-[#535F80]/30 dark:border-slate-700 text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -373,7 +373,7 @@ export function BillingPage() {
             </div>
 
             {proofDoc.balance > 0 && (
-              <div className="flex items-end gap-3 p-3 rounded-md border border-slate-200 dark:border-slate-700 no-print">
+              <div className="flex items-end gap-3 p-3 rounded-md border border-[#535F80]/30 dark:border-slate-700 no-print">
                 <FormInput
                   label="Record Payment Settlement (INR)"
                   name="payAmount"

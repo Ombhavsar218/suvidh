@@ -31,21 +31,21 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#051747]/45 backdrop-blur-[1px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
-        className={`w-full ${MAX_WIDTHS[size] || MAX_WIDTHS.lg} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl flex flex-col max-h-[90vh]`}
+        className={`w-full ${MAX_WIDTHS[size] || MAX_WIDTHS.lg} bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl flex flex-col max-h-[90vh]`}
       >
-        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#E7E9F0] dark:border-slate-800">
           <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-base font-semibold text-[#051747] dark:text-slate-100">
               {title}
             </h3>
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#535F80] dark:text-slate-400 mt-0.5">
                 {subtitle}
               </p>
             )}
@@ -53,7 +53,7 @@ export function Modal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1 rounded-md text-[#535F80] hover:text-[#051747] dark:hover:text-slate-200 hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
@@ -63,7 +63,7 @@ export function Modal({
         <div className="px-5 py-4 overflow-y-auto flex-1">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 rounded-b-lg">
+          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-[#E7E9F0] dark:border-slate-800 bg-[#E7E9F0]/55 dark:bg-slate-900/50 rounded-b-lg">
             {footer}
           </div>
         )}

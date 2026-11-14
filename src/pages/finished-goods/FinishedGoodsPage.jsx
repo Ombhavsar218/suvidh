@@ -61,7 +61,7 @@ export function FinishedGoodsPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-medium text-slate-900 dark:text-slate-100">{r.productName}</div>
+          <div className="font-medium text-[#051747] dark:text-slate-100">{r.productName}</div>
           <div className="text-[11px] font-mono text-slate-400">{r.productCode}</div>
         </div>
       ),
@@ -106,7 +106,7 @@ export function FinishedGoodsPage() {
       numeric: true,
       sortable: true,
       render: (r) => (
-        <span className="font-bold text-slate-900 dark:text-slate-100">
+        <span className="font-bold text-[#051747] dark:text-slate-100">
           {formatNumber(r.availableQty)} {r.uom}
         </span>
       ),
@@ -116,7 +116,7 @@ export function FinishedGoodsPage() {
       label: 'Reserved Qty',
       align: 'right',
       numeric: true,
-      render: (r) => <span className="text-[#2563EB] font-medium">{formatNumber(r.reservedQty)}</span>,
+      render: (r) => <span className="text-[#081F62] font-medium">{formatNumber(r.reservedQty)}</span>,
     },
     { key: 'storageLocation', label: 'Storage Location' },
     {
@@ -132,7 +132,7 @@ export function FinishedGoodsPage() {
         <button
           type="button"
           onClick={() => setSelectedBatch(r)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded border border-[#535F80]/30 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
         >
           <History className="w-3 h-3" />
           Batch
@@ -179,7 +179,7 @@ export function FinishedGoodsPage() {
         />
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -221,7 +221,7 @@ export function FinishedGoodsPage() {
         {selectedBatch && (
           <div className="space-y-4 text-xs">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-2.5 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-2.5 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Produced</span>
                 <strong className="text-sm tabular-nums">{selectedBatch.producedQty}</strong>
               </div>
@@ -230,8 +230,8 @@ export function FinishedGoodsPage() {
                 <strong className="text-sm tabular-nums text-emerald-600">{selectedBatch.acceptedQty}</strong>
               </div>
               <div className="p-2.5 rounded border border-blue-200 dark:border-blue-800">
-                <span className="text-[#2563EB] block">Available</span>
-                <strong className="text-sm tabular-nums text-[#2563EB]">{selectedBatch.availableQty}</strong>
+                <span className="text-[#081F62] block">Available</span>
+                <strong className="text-sm tabular-nums text-[#081F62]">{selectedBatch.availableQty}</strong>
               </div>
               <div className="p-2.5 rounded border border-red-200 dark:border-red-800">
                 <span className="text-red-600 block">Rejected</span>
@@ -240,14 +240,14 @@ export function FinishedGoodsPage() {
             </div>
 
             <div>
-              <h4 className="font-semibold text-slate-800 dark:text-slate-100 mb-2">
+              <h4 className="font-semibold text-[#051747] dark:text-slate-100 mb-2">
                 Batch Stock History
               </h4>
-              <div className="divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded-md">
+              <div className="divide-y divide-slate-200 dark:divide-slate-700 border border-[#535F80]/30 dark:border-slate-700 rounded-md">
                 {(selectedBatch.history || []).map((h, i) => (
                   <div key={i} className="px-3 py-2 flex items-center justify-between">
                     <div>
-                      <span className="font-medium text-slate-800 dark:text-slate-100">{h.action}</span>
+                      <span className="font-medium text-[#051747] dark:text-slate-100">{h.action}</span>
                       <span className="text-slate-400 ml-2 font-mono">{h.ref}</span>
                     </div>
                     <div className="text-right tabular-nums">

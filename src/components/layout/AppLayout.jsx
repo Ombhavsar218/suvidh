@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AppSidebar } from './AppSidebar';
 import { TopNavbar } from './TopNavbar';
-import { ToastContainer } from '../common/ToastContainer';
+import { ChangelogModal } from './ChangelogModal';
 import { Modal } from '../common/Modal';
 import { SecondaryButton } from '../common/Buttons';
 import { useApp } from '../../context/AppContext';
@@ -9,21 +9,28 @@ import { ROLE_DESCRIPTIONS } from '../../utils/permissions';
 
 export function AppLayout({ children }) {
   const [helpOpen, setHelpOpen] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const { activeRole } = useApp();
 
   return (
-    <div className="min-h-screen flex bg-[#F8FAFC] dark:bg-slate-950 text-[#0F172A] dark:text-slate-100">
-      <AppSidebar />
+    <div className="min-h-screen flex bg-[#E7E9F0] dark:bg-slate-950 text-[#051747] dark:text-slate-100">
+      <AppSidebar onOpenChangelog={() => setChangelogOpen(true)} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <TopNavbar onOpenHelp={() => setHelpOpen(true)} />
+        <TopNavbar
+          onOpenHelp={() => setHelpOpen(true)}
+          onOpenChangelog={() => setChangelogOpen(true)}
+        />
 
         <main className="flex-1 p-4 sm:p-6 max-w-[1600px] w-full mx-auto">
           {children}
         </main>
       </div>
 
-      <ToastContainer />
+      <ChangelogModal
+        isOpen={changelogOpen}
+        onClose={() => setChangelogOpen(false)}
+      />
 
       <Modal
         isOpen={helpOpen}
@@ -32,19 +39,19 @@ export function AppLayout({ children }) {
         subtitle="Manufacturing & Production Management System (LocalStorage Persistence)"
         footer={<SecondaryButton onClick={() => setHelpOpen(false)}>Close</SecondaryButton>}
       >
-        <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-          <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60">
-            <p className="font-semibold text-blue-900 dark:text-blue-200">
+        <div className="space-y-4 text-xs text-[#535F80] dark:text-slate-300 leading-relaxed">
+          <div className="p-3 rounded-md bg-[#E7E9F0]/75 dark:bg-slate-800/60 border border-[#535F80]/25 dark:border-slate-700">
+            <p className="font-semibold text-[#051747] dark:text-slate-100">
               Local Frontend Simulation Mode
             </p>
-            <p className="mt-1 text-blue-800 dark:text-blue-300">
+            <p className="mt-1 text-[#535F80] dark:text-slate-300">
               All records and mutations are stored locally in browser LocalStorage via a
               service layer structured for future Django REST Framework integration.
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-1.5">
+            <h4 className="font-semibold text-[#051747] dark:text-slate-100 mb-1.5">
               Key Manufacturing Rules Implemented
             </h4>
             <ul className="list-disc pl-4 space-y-1">

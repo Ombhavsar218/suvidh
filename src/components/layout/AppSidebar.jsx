@@ -3,17 +3,19 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
+  PanelLeftOpen,
   X,
 } from 'lucide-react';
 import { NAVIGATION_GROUPS } from './navigationConfig';
 import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
 import { hasModuleAccess } from '../../utils/permissions';
+import { Tooltip } from '../common/Tooltip';
+import { CURRENT_VERSION } from '../../data/changelogData';
 
 function SuvidhLogoMark() {
   return (
-    <div className="w-8 h-8 rounded-md bg-[#2563EB] flex items-center justify-center shrink-0">
+    <div className="w-8 h-8 rounded-md bg-[#081F62] flex items-center justify-center shrink-0">
       <svg
         width="18"
         height="18"
@@ -24,13 +26,13 @@ function SuvidhLogoMark() {
       >
         <path
           d="M4 7.5L12 3L20 7.5V16.5L12 21L4 16.5V7.5Z"
-          stroke="white"
+          stroke="#FEFEFE"
           strokeWidth="2"
           strokeLinejoin="round"
         />
         <path
           d="M12 12L20 7.5M12 12V21M12 12L4 7.5"
-          stroke="white"
+          stroke="#FEFEFE"
           strokeWidth="1.75"
           strokeLinejoin="round"
         />
@@ -39,7 +41,7 @@ function SuvidhLogoMark() {
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({ onOpenChangelog }) {
   const {
     sidebarCollapsed,
     toggleSidebar,
@@ -74,21 +76,39 @@ export function AppSidebar() {
     const collapsed = isMobile ? false : sidebarCollapsed;
 
     return (
-      <div className="flex flex-col h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 select-none">
+      <div className="flex flex-col h-full bg-[#FEFEFE] dark:bg-slate-900 border-r border-[#535F80]/20 dark:border-slate-800 select-none">
         {/* Brand Header */}
         <div
-          className={`h-14 flex items-center border-b border-slate-200 dark:border-slate-800 shrink-0 ${
+          className={`h-14 flex items-center border-b border-[#E7E9F0] dark:border-slate-800 shrink-0 ${
             collapsed ? 'justify-center px-2' : 'justify-between px-4'
           }`}
         >
           <div className="flex items-center gap-2.5 min-w-0">
-            <SuvidhLogoMark />
+            {!isMobile && collapsed ? (
+              <Tooltip content="Expand sidebar" placement="right">
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="group relative w-8 h-8 rounded-md flex items-center justify-center cursor-pointer focus:outline-none"
+                  aria-label="Expand sidebar"
+                >
+                  <span className="transition-opacity duration-150 group-hover:opacity-0">
+                    <SuvidhLogoMark />
+                  </span>
+                  <span className="absolute inset-0 rounded-md bg-[#E7E9F0] dark:bg-slate-800 border border-[#535F80]/30 dark:border-slate-700 text-[#081F62] dark:text-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                    <PanelLeftOpen className="w-4 h-4" />
+                  </span>
+                </button>
+              </Tooltip>
+            ) : (
+              <SuvidhLogoMark />
+            )}
             {!collapsed && (
               <div className="min-w-0 leading-tight">
-                <div className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                <div className="text-sm font-bold text-[#051747] dark:text-slate-100 tracking-tight truncate">
                   Suvidh ERP
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                <div className="text-[11px] text-[#535F80] dark:text-slate-400 truncate">
                   {settings.companyName?.split(' ')[0] || 'Precision'} Mfg.
                 </div>
               </div>
@@ -99,22 +119,23 @@ export function AppSidebar() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="p-1.5 rounded-md text-[#535F80] hover:text-[#051747] dark:hover:text-slate-200 hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 cursor-pointer"
               aria-label="Close sidebar"
             >
               <X className="w-4 h-4" />
             </button>
           ) : (
             !collapsed && (
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                title="Collapse sidebar"
-                aria-label="Collapse sidebar"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+              <Tooltip content="Collapse sidebar" placement="right">
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  className="p-1 rounded-md text-[#535F80] hover:text-[#051747] dark:hover:text-slate-200 hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 cursor-pointer"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </Tooltip>
             )
           )}
         </div>
@@ -130,7 +151,7 @@ export function AppSidebar() {
                   <button
                     type="button"
                     onClick={() => toggleGroup(group.key)}
-                    className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
+                    className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400 hover:text-[#051747] dark:hover:text-slate-200 cursor-pointer"
                   >
                     <span>{group.label}</span>
                     <ChevronDown
@@ -140,7 +161,7 @@ export function AppSidebar() {
                     />
                   </button>
                 ) : (
-                  <div className="h-px bg-slate-100 dark:bg-slate-800 mx-2 my-1" />
+                  <div className="h-px bg-[#E7E9F0] dark:bg-slate-800 mx-2 my-1" />
                 )}
 
                 {(collapsed || isExpanded) && (
@@ -150,43 +171,72 @@ export function AppSidebar() {
                       const isActive =
                         location.pathname === item.path ||
                         location.pathname.startsWith(`${item.path}/`);
+                      const isChangelogItem = item.key === 'changelog';
 
                       return (
-                        <NavLink
+                        <Tooltip
                           key={item.key}
-                          to={item.path}
-                          onClick={() => isMobile && setMobileMenuOpen(false)}
-                          className={`group relative flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors ${
-                            collapsed ? 'justify-center p-2.5' : 'px-2.5 py-2'
-                          } ${
-                            isActive
-                              ? 'bg-blue-50 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-400'
-                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100'
-                          }`}
+                          content={item.label}
+                          placement="right"
+                          disabled={!collapsed}
+                          className="block w-full"
                         >
-                          <Icon
-                            className={`w-4 h-4 shrink-0 ${
-                              isActive
-                                ? 'text-[#2563EB] dark:text-blue-400'
-                                : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-                            }`}
-                          />
-                          {!collapsed && (
-                            <span className="truncate flex-1">{item.label}</span>
-                          )}
-                          {!collapsed && item.key === 'notifications' && unreadCount > 0 && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300 tabular-nums">
-                              {unreadCount}
-                            </span>
-                          )}
+                          <div className="relative flex items-center">
+                            <NavLink
+                              to={item.path}
+                              onClick={() => isMobile && setMobileMenuOpen(false)}
+                              className={`group relative flex-1 flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors ${
+                                collapsed
+                                  ? 'justify-center p-2.5'
+                                  : isChangelogItem
+                                  ? 'pl-2.5 pr-16 py-2'
+                                  : 'px-2.5 py-2'
+                              } ${
+                                isActive
+                                  ? 'bg-[#081F62] text-[#FEFEFE] shadow-2xs'
+                                  : 'text-[#051747]/85 dark:text-slate-400 hover:bg-[#E7E9F0]/75 dark:hover:bg-slate-800/60 hover:text-[#051747] dark:hover:text-slate-100'
+                              }`}
+                            >
+                              <Icon
+                                className={`w-4 h-4 shrink-0 ${
+                                  isActive
+                                    ? 'text-[#FEFEFE]'
+                                    : 'text-[#535F80] dark:text-slate-500 group-hover:text-[#051747] dark:group-hover:text-slate-300'
+                                }`}
+                              />
+                              {!collapsed && (
+                                <span className="truncate flex-1">{item.label}</span>
+                              )}
+                              {!collapsed && item.key === 'notifications' && unreadCount > 0 && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300 tabular-nums">
+                                  {unreadCount}
+                                </span>
+                              )}
+                            </NavLink>
 
-                          {/* Tooltip when collapsed */}
-                          {collapsed && (
-                            <span className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 fixed left-[74px] z-50 px-2.5 py-1.5 rounded-md bg-slate-900 dark:bg-slate-800 text-white text-xs font-medium shadow-lg whitespace-nowrap">
-                              {item.label}
-                            </span>
-                          )}
-                        </NavLink>
+                            {!collapsed && isChangelogItem && (
+                              <div className="absolute right-2 flex items-center">
+                                <Tooltip content="Open changelog popup" placement="right">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isMobile) setMobileMenuOpen(false);
+                                      onOpenChangelog?.();
+                                    }}
+                                    className={`px-1.5 py-0.5 text-[10px] font-semibold rounded tabular-nums transition-colors cursor-pointer ${
+                                      isActive
+                                        ? 'bg-[#FEFEFE]/20 hover:bg-[#FEFEFE]/30 text-[#FEFEFE]'
+                                        : 'bg-[#E7E9F0] hover:bg-[#081F62] hover:text-[#FEFEFE] text-[#051747] dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-[#081F62] dark:hover:text-[#FEFEFE]'
+                                    }`}
+                                    aria-label="Open changelog popup"
+                                  >
+                                    v{CURRENT_VERSION}
+                                  </button>
+                                </Tooltip>
+                              </div>
+                            )}
+                          </div>
+                        </Tooltip>
                       );
                     })}
                   </div>
@@ -195,21 +245,6 @@ export function AppSidebar() {
             );
           })}
         </nav>
-
-        {/* Expand button footer when collapsed */}
-        {!isMobile && collapsed && (
-          <div className="p-2 border-t border-slate-200 dark:border-slate-800 flex justify-center">
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="p-2 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              title="Expand sidebar"
-              aria-label="Expand sidebar"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        )}
       </div>
     );
   };

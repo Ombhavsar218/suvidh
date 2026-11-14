@@ -1,15 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users,
-  Package,
   Boxes,
   ClipboardList,
   Factory,
   Truck,
   AlertTriangle,
   ArrowRight,
-  ShieldAlert,
+  Wallet,
+  Receipt,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -22,26 +21,28 @@ import {
   Legend,
   AreaChart,
   Area,
-  PieChart,
-  Pie,
-  Cell,
+  // PieChart,
+  // Pie,
+  // Cell,
 } from 'recharts';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { ChartCard } from '../../components/charts/ChartCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
-import { SecondaryButton } from '../../components/common/Buttons';
+// import { SecondaryButton } from '../../components/common/Buttons';
 import { useErpData } from '../../context/ErpDataContext';
 import { getMaterialComputedFields } from '../../services/erpService';
 import { monthlyProductionTrend } from '../../data/productionData';
 import { formatNumber, formatDate, formatCurrency, getDaysRemaining } from '../../utils/formatters';
 
+/*
 const ORDER_COLORS = {
   Pending: '#D97706',
   'In Production': '#2563EB',
   Completed: '#16A34A',
   Dispatched: '#4F46E5',
 };
+*/
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -54,8 +55,9 @@ export function DashboardPage() {
     purchaseOrders,
     productionPlans,
     productionEntries,
-    qualityInspections,
-    salesOrders,
+    financeTransactions,
+    billingDocuments,
+    // salesOrders,
   } = useErpData();
 
   const [horizonFilter, setHorizonFilter] = useState('6M');
@@ -70,17 +72,54 @@ export function DashboardPage() {
     [computedMaterials]
   );
 
-  const pendingInspections = useMemo(
-    () =>
-      qualityInspections.filter(
-        (q) => q.status === 'Pending' || q.status === 'In Inspection'
-      ),
-    [qualityInspections]
-  );
+  const companyFunds = useMemo(() => {
+    const settledInflow = financeTransactions
+      .filter((t) => t.type === 'Income' && t.paymentStatus !== 'Pending')
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const settledOutflow = financeTransactions
+      .filter((t) => t.type === 'Expense' && t.paymentStatus === 'Paid')
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const pendingReceivable = financeTransactions
+      .filter((t) => t.type === 'Income' && t.paymentStatus === 'Pending')
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const pendingPayable = financeTransactions
+      .filter((t) => t.type === 'Expense' && t.paymentStatus !== 'Paid')
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const remainingCash = settledInflow - settledOutflow;
+    const netProjected = remainingCash + pendingReceivable - pendingPayable;
+
+    return {
+      settledInflow,
+      settledOutflow,
+      pendingReceivable,
+      pendingPayable,
+      remainingCash,
+      netProjected,
+    };
+  }, [financeTransactions]);
+
+  const pendingBilling = useMemo(() => {
+    const items = billingDocuments
+      .map((bill) => {
+        const amount = Number(bill.amount || 0);
+        const paid = Number(bill.paidAmount || 0);
+        const balance = Math.max(0, amount - paid);
+        const cust = customers.find((c) => c.id === bill.customerId);
+        return {
+          ...bill,
+          customerName: cust?.name || bill.customerId,
+          balance,
+        };
+      })
+      .filter((bill) => bill.balance > 0)
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+    const totalDue = items.reduce((sum, bill) => sum + bill.balance, 0);
+    return { items, totalDue };
+  }, [billingDocuments, customers]);
 
   // Summary metrics
-  const activeCustomersCount = customers.filter((c) => c.status === 'Active').length;
-  const activeProductsCount = products.filter((p) => p.status === 'Active').length;
   const totalUsableAvailableMaterial = computedMaterials.reduce(
     (sum, m) => sum + m.availableQty,
     0
@@ -133,7 +172,7 @@ export function DashboardPage() {
     }));
   }, [computedMaterials]);
 
-  // Chart 4: Order Status Distribution
+  /* Chart 4: Order Status Distribution (Commented out)
   const orderStatusData = useMemo(() => {
     const counts = {
       Pending: 0,
@@ -147,6 +186,7 @@ export function DashboardPage() {
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [salesOrders]);
+  */
 
   const upcomingDeliveries = useMemo(() => {
     return [...pendingDeliverySchedules]
@@ -157,42 +197,21 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Manufacturing Operations Dashboard"
-        description="Real-time local overview of production plans, raw material availability, quality queue, and customer deliveries."
-        actions={
-          <>
-            <SecondaryButton size="sm" onClick={() => navigate('/production-planning')}>
-              Production Planning
-            </SecondaryButton>
-            <SecondaryButton size="sm" onClick={() => navigate('/reports')}>
-              View Reports
-            </SecondaryButton>
-          </>
-        }
+        title="Dashboard"
+        description="Real-time local overview of production plans, raw material availability, company funds, pending billing, and customer deliveries."
       />
+      {/*
+        Commented header quick-action buttons:
+        <SecondaryButton size="sm" onClick={() => navigate('/production-planning')}>
+          Production Planning
+        </SecondaryButton>
+        <SecondaryButton size="sm" onClick={() => navigate('/reports')}>
+          View Reports
+        </SecondaryButton>
+      */}
 
-      {/* 6 Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard
-          label="Total Customers"
-          value={customers.length}
-          trend={`${activeCustomersCount} active`}
-          trendDirection="up"
-          sublabel="OEM accounts"
-          icon={Users}
-          tone="blue"
-          onClick={() => navigate('/customers')}
-        />
-        <StatCard
-          label="Active Products"
-          value={activeProductsCount}
-          trend={`${products.length} total SKUs`}
-          trendDirection="neutral"
-          sublabel="BOM linked"
-          icon={Package}
-          tone="green"
-          onClick={() => navigate('/products')}
-        />
+      {/* 4 Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Raw Material Stock"
           value={formatNumber(totalUsableAvailableMaterial)}
@@ -235,17 +254,17 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* 4 Recharts Analytics Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* 3 Recharts Analytics Cards (3-column layout on desktop) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ChartCard
           title="Production Overview"
-          subtitle="Planned manufacturing requirement vs actual & rejected units"
+          subtitle="Planned requirement vs actual & rejected units"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={productionOverviewData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+            <BarChart data={productionOverviewData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
+              <YAxis width={34} tick={{ fontSize: 10, fill: '#64748B' }} />
               <Tooltip
                 contentStyle={{
                   fontSize: '12px',
@@ -253,7 +272,7 @@ export function DashboardPage() {
                   border: '1px solid #E2E8F0',
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
               <Bar dataKey="Planned" fill="#2563EB" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Actual" fill="#16A34A" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Rejected" fill="#DC2626" radius={[4, 4, 0, 0]} />
@@ -265,15 +284,15 @@ export function DashboardPage() {
           title="Monthly Production Trend"
           subtitle="Month-wise total output vs planned volume"
           actions={
-            <div className="inline-flex rounded-md border border-slate-200 dark:border-slate-700 overflow-hidden text-xs">
+            <div className="inline-flex rounded-md border border-[#535F80]/30 dark:border-slate-700 overflow-hidden text-xs">
               {['3M', '6M'].map((h) => (
                 <button
                   key={h}
                   type="button"
                   onClick={() => setHorizonFilter(h)}
-                  className={`px-2.5 py-1 font-medium cursor-pointer ${
+                  className={`px-2 py-0.5 font-medium cursor-pointer ${
                     horizonFilter === h
-                      ? 'bg-[#2563EB] text-white'
+                      ? 'bg-[#081F62] text-white'
                       : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                   }`}
                 >
@@ -284,10 +303,10 @@ export function DashboardPage() {
           }
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+            <AreaChart data={trendData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#64748B' }} />
+              <YAxis width={36} tick={{ fontSize: 10, fill: '#64748B' }} />
               <Tooltip
                 contentStyle={{
                   fontSize: '12px',
@@ -295,7 +314,7 @@ export function DashboardPage() {
                   border: '1px solid #E2E8F0',
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
               <Area
                 type="monotone"
                 dataKey="planned"
@@ -318,13 +337,13 @@ export function DashboardPage() {
 
         <ChartCard
           title="Inventory Overview"
-          subtitle="Available unreserved stock, reserved allocations, and reorder shortages"
+          subtitle="Available unreserved stock, reserved & shortages"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={inventoryChartData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+            <BarChart data={inventoryChartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748B' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748B' }} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
+              <YAxis width={36} tick={{ fontSize: 10, fill: '#64748B' }} />
               <Tooltip
                 contentStyle={{
                   fontSize: '12px',
@@ -332,7 +351,7 @@ export function DashboardPage() {
                   border: '1px solid #E2E8F0',
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
               <Bar dataKey="Available" fill="#16A34A" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Reserved" fill="#2563EB" radius={[4, 4, 0, 0]} />
               <Bar dataKey="Shortage" fill="#DC2626" radius={[4, 4, 0, 0]} />
@@ -340,6 +359,7 @@ export function DashboardPage() {
           </ResponsiveContainer>
         </ChartCard>
 
+        {/* Order Status Distribution (Commented out)
         <ChartCard
           title="Order Status Distribution"
           subtitle="Sales order lifecycle breakdown"
@@ -350,8 +370,8 @@ export function DashboardPage() {
                 data={orderStatusData}
                 cx="50%"
                 cy="50%"
-                innerRadius={58}
-                outerRadius={92}
+                innerRadius={38}
+                outerRadius={62}
                 paddingAngle={3}
                 dataKey="value"
               >
@@ -366,69 +386,132 @@ export function DashboardPage() {
                   border: '1px solid #E2E8F0',
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
             </PieChart>
           </ResponsiveContainer>
         </ChartCard>
+        */}
       </div>
 
       {/* 6 Additional Operational Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-        {/* 1. Recent Production Activity */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+        {/* 1. Company Funds Remaining */}
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Recent Production Activity
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+              <Wallet className="w-4 h-4 text-[#081F62]" />
+              Company Funds Remaining
             </h3>
             <button
               type="button"
-              onClick={() => navigate('/production-execution')}
-              className="text-xs font-medium text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              onClick={() => navigate('/finance')}
+              className="text-xs font-medium text-[#081F62] hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              View all <ArrowRight className="w-3 h-3" />
+              Finance <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs flex-1">
-            {productionEntries.slice(0, 4).map((entry) => {
-              const prod = products.find((p) => p.id === entry.productId);
-              const mach = machines.find((m) => m.id === entry.machineId);
-              return (
-                <div key={entry.id} className="py-2.5 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-800 dark:text-slate-100 truncate">
-                      {prod?.name || entry.productId}
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {mach?.code} · {formatDate(entry.productionDate)} · {entry.operator}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-semibold text-emerald-600 tabular-nums">
-                      {entry.goodOutput} good
-                    </div>
-                    <StatusBadge status={entry.status} size="xs" />
-                  </div>
-                </div>
-              );
-            })}
+
+          <div className="rounded-md bg-[#E7E9F0]/60 dark:bg-slate-800/50 border border-[#535F80]/15 dark:border-slate-800 px-3 py-2.5 mb-2 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-medium text-[#535F80] dark:text-slate-400">
+                Available Cash Balance
+              </p>
+              <p
+                className={`text-lg font-bold tabular-nums mt-0.5 ${
+                  companyFunds.remainingCash >= 0
+                    ? 'text-[#051747] dark:text-slate-100'
+                    : 'text-red-600'
+                }`}
+              >
+                {formatCurrency(companyFunds.remainingCash)}
+              </p>
+            </div>
+            <div className="text-right">
+              <span
+                className={`inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded-md border whitespace-nowrap ${
+                  companyFunds.remainingCash >= 0
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/60'
+                    : 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800/60'
+                }`}
+              >
+                {companyFunds.remainingCash >= 0 ? 'Positive Cash' : 'Deficit'}
+              </span>
+              <p className="text-[10px] text-[#535F80] dark:text-slate-400 mt-1 tabular-nums">
+                Net: {formatCurrency(companyFunds.netProjected)}
+              </p>
+            </div>
+          </div>
+
+          <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+            <div className="py-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium text-[#051747] dark:text-slate-100">Settled Receipts</p>
+                <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                  Paid &amp; partial customer inflows
+                </p>
+              </div>
+              <span className="font-semibold text-emerald-600 tabular-nums shrink-0">
+                + {formatCurrency(companyFunds.settledInflow)}
+              </span>
+            </div>
+
+            <div className="py-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium text-[#051747] dark:text-slate-100">Expenses Paid</p>
+                <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                  Material, power &amp; maintenance paid
+                </p>
+              </div>
+              <span className="font-semibold text-red-600 tabular-nums shrink-0">
+                - {formatCurrency(companyFunds.settledOutflow)}
+              </span>
+            </div>
+
+            <div className="py-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium text-[#051747] dark:text-slate-100">
+                  Pending Receivables
+                </p>
+                <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                  Expected client settlements
+                </p>
+              </div>
+              <span className="font-semibold text-[#081F62] dark:text-blue-400 tabular-nums shrink-0">
+                + {formatCurrency(companyFunds.pendingReceivable)}
+              </span>
+            </div>
+
+            <div className="py-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-medium text-[#051747] dark:text-slate-100">
+                  Pending Payables
+                </p>
+                <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                  Unsettled vendor &amp; tooling dues
+                </p>
+              </div>
+              <span className="font-semibold text-amber-600 tabular-nums shrink-0">
+                - {formatCurrency(companyFunds.pendingPayable)}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* 2. Upcoming Delivery Schedules */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
               Upcoming Delivery Schedules
             </h3>
             <button
               type="button"
               onClick={() => navigate('/schedules')}
-              className="text-xs font-medium text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs font-medium text-[#081F62] hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
               Schedules <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs flex-1">
+          <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
             {upcomingDeliveries.map((sch) => {
               const cust = customers.find((c) => c.id === sch.customerId);
               const prod = products.find((p) => p.id === sch.productId);
@@ -436,10 +519,10 @@ export function DashboardPage() {
               return (
                 <div key={sch.id} className="py-2.5 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-800 dark:text-slate-100 truncate">
+                    <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
                       {cust?.name || sch.customerId}
                     </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    <p className="text-[11px] text-[#535F80] dark:text-slate-400 truncate">
                       {prod?.name} · {sch.pendingQty} pending
                     </p>
                   </div>
@@ -462,31 +545,31 @@ export function DashboardPage() {
         </div>
 
         {/* 3. Low-Stock Materials */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               Low-Stock Materials
             </h3>
             <button
               type="button"
               onClick={() => navigate('/inventory')}
-              className="text-xs font-medium text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs font-medium text-[#081F62] hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
               Inventory <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs flex-1">
+          <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
             {lowStockMaterials.length === 0 ? (
               <p className="text-xs text-slate-500 py-4">All usable material stocks exceed reorder levels.</p>
             ) : (
               lowStockMaterials.map((mat) => (
                 <div key={mat.id} className="py-2.5 flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-800 dark:text-slate-100 truncate">
+                    <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
                       {mat.name}
                     </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-[#535F80] dark:text-slate-400">
                       {mat.code} · Reorder: {mat.reorderLevel} {mat.uom}
                     </p>
                   </div>
@@ -502,89 +585,119 @@ export function DashboardPage() {
           </div>
         </div>
 
-        {/* 4. Pending Quality Inspections */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+        {/* 4. Recent Production Activity */}
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-              <ShieldAlert className="w-4 h-4 text-[#2563EB]" />
-              Pending Quality Inspections
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
+              Recent Production Activity
             </h3>
             <button
               type="button"
-              onClick={() => navigate('/quality-control')}
-              className="text-xs font-medium text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              onClick={() => navigate('/production-execution')}
+              className="text-xs font-medium text-[#081F62] hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              QC Queue <ArrowRight className="w-3 h-3" />
+              View all <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs flex-1">
-            {pendingInspections.slice(0, 4).map((qc) => (
-              <div key={qc.id} className="py-2.5 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-800 dark:text-slate-100 truncate">
-                    {qc.itemName}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {qc.itemType} · Batch {qc.batchNumber}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="font-medium tabular-nums">
-                    {qc.inspectedQty} {qc.uom}
+          <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+            {productionEntries.slice(0, 4).map((entry) => {
+              const prod = products.find((p) => p.id === entry.productId);
+              const mach = machines.find((m) => m.id === entry.machineId);
+              return (
+                <div key={entry.id} className="py-2.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                      {prod?.name || entry.productId}
+                    </p>
+                    <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                      {mach?.code} · {formatDate(entry.productionDate)} · {entry.operator}
+                    </p>
                   </div>
-                  <StatusBadge status={qc.status} size="xs" />
+                  <div className="text-right shrink-0">
+                    <div className="font-semibold text-emerald-600 tabular-nums">
+                      {entry.goodOutput} good
+                    </div>
+                    <StatusBadge status={entry.status} size="xs" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* 5. Machine Availability */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+        {/* 5. Pending Billing & Invoices */}
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Machine Availability
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+              <Receipt className="w-4 h-4 text-[#081F62]" />
+              Pending Billing &amp; Invoices
             </h3>
             <button
               type="button"
-              onClick={() => navigate('/machines')}
-              className="text-xs font-medium text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              onClick={() => navigate('/billing')}
+              className="text-xs font-medium text-[#081F62] hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              Machines <ArrowRight className="w-3 h-3" />
+              Billing <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs flex-1">
-            {machines.slice(0, 5).map((mach) => (
-              <div key={mach.id} className="py-2.5 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-800 dark:text-slate-100 truncate">
-                    {mach.code} — {mach.name}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Cap: {mach.dailyCapacity}/day · Eff: {mach.efficiency}%
-                  </p>
+
+          <div className="rounded-md bg-[#E7E9F0]/60 dark:bg-slate-800/50 border border-[#535F80]/15 dark:border-slate-800 px-3 py-2 mb-2 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium text-[#535F80] dark:text-slate-400">
+              Total Outstanding ({pendingBilling.items.length}{' '}
+              {pendingBilling.items.length === 1 ? 'bill' : 'bills'})
+            </span>
+            <span className="text-sm font-bold text-[#051747] dark:text-slate-100 tabular-nums">
+              {formatCurrency(pendingBilling.totalDue)}
+            </span>
+          </div>
+
+          <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+            {pendingBilling.items.length === 0 ? (
+              <p className="text-xs text-slate-500 py-4">
+                All customer billing documents are settled.
+              </p>
+            ) : (
+              pendingBilling.items.slice(0, 4).map((bill) => (
+                <div
+                  key={bill.id}
+                  onClick={() => navigate('/billing')}
+                  className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                      {bill.customerName}
+                    </p>
+                    <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                      {bill.documentNumber} · Due {formatDate(bill.dueDate)}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-semibold text-amber-600 tabular-nums">
+                      {formatCurrency(bill.balance)}
+                    </div>
+                    <StatusBadge status={bill.status} size="xs" />
+                  </div>
                 </div>
-                <StatusBadge status={mach.status} size="xs" />
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
         {/* 6. Recent Purchase Orders */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
               Recent Purchase Orders
             </h3>
             <button
               type="button"
               onClick={() => navigate('/purchases')}
-              className="text-xs font-medium text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs font-medium text-[#081F62] hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
               Purchases <ArrowRight className="w-3 h-3" />
             </button>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs flex-1">
+          <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
             {purchaseOrders.slice(0, 4).map((po) => (
               <div
                 key={po.id}
@@ -592,10 +705,10 @@ export function DashboardPage() {
                 className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-800 dark:text-slate-100">
+                  <p className="font-medium text-[#051747] dark:text-slate-100">
                     {po.poNumber}
                   </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-[#535F80] dark:text-slate-400">
                     ETA: {formatDate(po.expectedArrival)} · {po.items.length} line item(s)
                   </p>
                 </div>

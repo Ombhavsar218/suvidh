@@ -23,6 +23,7 @@ import {
   Bell,
   UserCog,
   Settings,
+  History,
 } from 'lucide-react';
 
 export const NAVIGATION_GROUPS = [
@@ -88,6 +89,7 @@ export const NAVIGATION_GROUPS = [
     items: [
       { key: 'notifications', label: 'Notifications', path: '/notifications', icon: Bell },
       { key: 'users', label: 'User Management', path: '/users', icon: UserCog },
+      { key: 'changelog', label: 'Changelog', path: '/changelog', icon: History },
       { key: 'settings', label: 'Settings', path: '/settings', icon: Settings },
     ],
   },
@@ -96,6 +98,8 @@ export const NAVIGATION_GROUPS = [
 export const ROUTE_LABELS = {
   dashboard: 'Dashboard',
   customers: 'Customers',
+  new: 'New Customer',
+  edit: 'Edit Customer',
   products: 'Products',
   bom: 'Bill of Materials',
   materials: 'Raw Materials',
@@ -117,5 +121,6 @@ export const ROUTE_LABELS = {
   production: 'Production Analytics',
   notifications: 'Notifications',
   users: 'User Management',
+  changelog: 'Changelog',
   settings: 'Settings',
 };

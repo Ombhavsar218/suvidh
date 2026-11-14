@@ -30,21 +30,21 @@ export function StatCard({
       ? 'text-emerald-600 dark:text-emerald-400'
       : trendDirection === 'down'
       ? 'text-red-600 dark:text-red-400'
-      : 'text-slate-500 dark:text-slate-400';
+      : 'text-[#535F80] dark:text-slate-400';
 
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-2xs transition-colors print-card ${
-        onClick ? 'cursor-pointer hover:border-[#2563EB]/50' : ''
+      className={`bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs transition-colors print-card ${
+        onClick ? 'cursor-pointer hover:border-[#081F62]/50' : ''
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">
+          <p className="text-xs font-medium text-[#535F80] dark:text-slate-400 truncate">
             {label}
           </p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1.5 tabular-nums tracking-tight">
+          <p className="text-2xl font-bold text-[#051747] dark:text-slate-100 mt-1.5 tabular-nums tracking-tight">
             {value}
           </p>
         </div>
@@ -56,7 +56,7 @@ export function StatCard({
       </div>
 
       {(trend || sublabel) && (
-        <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+        <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[#E7E9F0] dark:border-slate-800/80 text-[11px]">
           {trend ? (
             <span className={`inline-flex items-center gap-1 font-medium ${trendColor}`}>
               <TrendIcon className="w-3 h-3" />
@@ -66,7 +66,7 @@ export function StatCard({
             <span />
           )}
           {sublabel && (
-            <span className="text-slate-500 dark:text-slate-400 truncate">{sublabel}</span>
+            <span className="text-[#535F80] dark:text-slate-400 truncate">{sublabel}</span>
           )}
         </div>
       )}

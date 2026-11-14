@@ -209,8 +209,8 @@ export function FinancePage() {
                 data={summary.expenseCategories}
                 cx="50%"
                 cy="50%"
-                innerRadius={52}
-                outerRadius={82}
+                innerRadius={36}
+                outerRadius={60}
                 paddingAngle={2}
                 dataKey="value"
               >
@@ -225,7 +225,7 @@ export function FinancePage() {
         </ChartCard>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}

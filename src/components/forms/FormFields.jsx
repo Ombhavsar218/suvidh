@@ -1,3 +1,6 @@
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
+
 export function FormInput({
   label,
   name,
@@ -19,7 +22,7 @@ export function FormInput({
       {label && (
         <label
           htmlFor={name}
-          className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+          className="block text-xs font-medium text-[#051747] dark:text-slate-300 mb-1.5"
         >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
@@ -35,17 +38,17 @@ export function FormInput({
         min={min}
         max={max}
         step={step}
-        className={`w-full px-3 py-2 text-sm rounded-md border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500 ${
+        className={`w-full px-3 py-2 text-sm rounded-md border bg-[#FEFEFE] dark:bg-slate-900 text-[#051747] dark:text-slate-100 placeholder:text-[#535F80]/60 focus:outline-none focus:ring-2 focus:ring-[#081F62]/15 transition-colors disabled:bg-[#E7E9F0]/60 dark:disabled:bg-slate-800 disabled:text-[#535F80] ${
           error
             ? 'border-red-400 focus:border-red-500'
-            : 'border-slate-200 dark:border-slate-700 focus:border-[#2563EB]'
+            : 'border-[#535F80]/30 dark:border-slate-700 focus:border-[#081F62]'
         }`}
       />
       {error ? (
         <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">{error}</p>
       ) : (
         helperText && (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{helperText}</p>
+          <p className="text-[11px] text-[#535F80] dark:text-slate-400 mt-1">{helperText}</p>
         )
       )}
     </div>
@@ -65,44 +68,127 @@ export function FormSelect({
   helperText,
   className = '',
 }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    const handleKey = (e) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    if (open) {
+      document.addEventListener('mousedown', handleOutside);
+      document.addEventListener('keydown', handleKey);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [open]);
+
+  const normalizedOptions = useMemo(() => {
+    return options.map((opt) => {
+      if (typeof opt === 'object' && opt !== null) {
+        return { label: String(opt.label), value: String(opt.value) };
+      }
+      return { label: String(opt), value: String(opt) };
+    });
+  }, [options]);
+
+  const currentVal = value !== null && value !== undefined ? String(value) : '';
+  const selectedOpt = normalizedOptions.find((opt) => opt.value === currentVal);
+  const displayLabel = selectedOpt ? selectedOpt.label : (placeholder || 'Select an option');
+  const isSelected = Boolean(selectedOpt);
+
+  const handleSelect = (val) => {
+    if (disabled) return;
+    onChange({ target: { name, value: val } });
+    setOpen(false);
+  };
+
   return (
-    <div className={className}>
+    <div className={`relative ${className}`} ref={containerRef}>
       {label && (
         <label
           htmlFor={name}
-          className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+          className="block text-xs font-medium text-[#051747] dark:text-slate-300 mb-1.5"
         >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
-      <select
+
+      <button
         id={name}
-        name={name}
-        value={value ?? ''}
-        onChange={onChange}
+        type="button"
         disabled={disabled}
-        className={`w-full px-3 py-2 text-sm rounded-md border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors disabled:bg-slate-50 dark:disabled:bg-slate-800 ${
+        onClick={() => setOpen((prev) => !prev)}
+        className={`w-full px-3 py-2 text-xs rounded-md border flex items-center justify-between gap-2 bg-[#FEFEFE] dark:bg-slate-900 transition-colors text-left disabled:bg-[#E7E9F0]/60 dark:disabled:bg-slate-800 disabled:cursor-not-allowed cursor-pointer ${
           error
-            ? 'border-red-400 focus:border-red-500'
-            : 'border-slate-200 dark:border-slate-700 focus:border-[#2563EB]'
-        }`}
+            ? 'border-red-400 focus:border-red-500 ring-1 ring-red-400/20'
+            : open
+            ? 'border-[#081F62] ring-2 ring-[#081F62]/15'
+            : 'border-[#535F80]/30 dark:border-slate-700 hover:border-[#081F62]/60'
+        } ${isSelected ? 'text-[#051747] dark:text-slate-100 font-medium' : 'text-[#535F80]/70 dark:text-slate-400'}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
-        {placeholder && <option value="">{placeholder}</option>}
-        {options.map((opt) => {
-          const val = typeof opt === 'object' ? opt.value : opt;
-          const lbl = typeof opt === 'object' ? opt.label : opt;
-          return (
-            <option key={val} value={val}>
-              {lbl}
-            </option>
-          );
-        })}
-      </select>
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-[#535F80] transition-transform duration-200 shrink-0 ${
+            open ? 'rotate-180 text-[#081F62] dark:text-slate-200' : ''
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute top-full left-0 mt-1 w-full bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-700 rounded-lg shadow-xl py-1 z-50 max-h-60 overflow-y-auto"
+        >
+          {placeholder && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={!currentVal}
+              onClick={() => handleSelect('')}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-left text-slate-500 dark:text-slate-400 hover:bg-[#E7E9F0]/60 dark:hover:bg-slate-800 cursor-pointer"
+            >
+              <span>{placeholder}</span>
+              {!currentVal && <Check className="w-3.5 h-3.5 shrink-0" />}
+            </button>
+          )}
+          {normalizedOptions.map((opt) => {
+            const isOptSelected = opt.value === currentVal;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isOptSelected}
+                onClick={() => handleSelect(opt.value)}
+                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors cursor-pointer ${
+                  isOptSelected
+                    ? 'bg-[#081F62] text-[#FEFEFE] font-medium'
+                    : 'text-[#051747] dark:text-slate-200 hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800/80'
+                }`}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isOptSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {error ? (
         <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">{error}</p>
       ) : (
         helperText && (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{helperText}</p>
+          <p className="text-[11px] text-[#535F80] dark:text-slate-400 mt-1">{helperText}</p>
         )
       )}
     </div>
@@ -125,7 +211,7 @@ export function FormTextarea({
       {label && (
         <label
           htmlFor={name}
-          className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5"
+          className="block text-xs font-medium text-[#051747] dark:text-slate-300 mb-1.5"
         >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
@@ -137,10 +223,10 @@ export function FormTextarea({
         value={value ?? ''}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full px-3 py-2 text-sm rounded-md border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-colors ${
+        className={`w-full px-3 py-2 text-sm rounded-md border bg-[#FEFEFE] dark:bg-slate-900 text-[#051747] dark:text-slate-100 placeholder:text-[#535F80]/60 focus:outline-none focus:ring-2 focus:ring-[#081F62]/15 transition-colors ${
           error
             ? 'border-red-400 focus:border-red-500'
-            : 'border-slate-200 dark:border-slate-700 focus:border-[#2563EB]'
+            : 'border-[#535F80]/30 dark:border-slate-700 focus:border-[#081F62]'
         }`}
       />
       {error && <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">{error}</p>}

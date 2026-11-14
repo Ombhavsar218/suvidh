@@ -115,17 +115,17 @@ export function PurchaseDetailPage() {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4">
           <p className="text-xs text-slate-500">Supplier Details</p>
           <p className="text-sm font-semibold mt-1">{supplier?.name}</p>
           <p className="text-xs text-slate-500 mt-0.5">{supplier?.contactPerson} · {supplier?.phone}</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4">
           <p className="text-xs text-slate-500">Order Value</p>
           <p className="text-xl font-bold mt-1 tabular-nums">{formatCurrency(po.totalAmount)}</p>
           <p className="text-xs text-slate-500 mt-0.5">{po.items.length} line item(s)</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4">
           <p className="text-xs text-slate-500">Notes</p>
           <p className="text-xs text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">
             {po.notes || 'No remarks recorded.'}
@@ -135,7 +135,7 @@ export function PurchaseDetailPage() {
 
       {/* Material-wise Line Items */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">
+        <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 mb-3">
           Material-wise Order Breakdown
         </h3>
         <DataTable
@@ -182,7 +182,7 @@ export function PurchaseDetailPage() {
 
       {/* Receiving History */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">
+        <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 mb-3">
           Receiving & GRN History ({po.receivingHistory?.length || 0})
         </h3>
         <DataTable

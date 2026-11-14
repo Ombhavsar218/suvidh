@@ -474,7 +474,7 @@ export function ReportsPage() {
 
       {/* Report Selector Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 space-y-1 no-print">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3 space-y-1 no-print">
           <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
             <FileBarChart className="w-3.5 h-3.5" />
             Available Reports (11)
@@ -486,7 +486,7 @@ export function ReportsPage() {
               onClick={() => setReportKey(rt.key)}
               className={`w-full text-left px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 reportKey === rt.key
-                  ? 'bg-blue-50 text-[#2563EB] dark:bg-blue-950/60 dark:text-blue-400'
+                  ? 'bg-blue-50 text-[#081F62] dark:bg-blue-950/60 dark:text-blue-400'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
@@ -497,9 +497,9 @@ export function ReportsPage() {
 
         <div className="lg:col-span-3 space-y-4">
           {/* Filters Toolbar */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 space-y-3 no-print">
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 space-y-3 no-print">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
                 {reportConfig.title} ({filteredRows.length} records)
               </h3>
               <DateRangeFilter

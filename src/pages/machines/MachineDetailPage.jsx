@@ -57,9 +57,9 @@ export function MachineDetailPage() {
 
       {/* Info + Current Assignment + Compatible Products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-3">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-[#2563EB]" />
+            <Cpu className="w-4 h-4 text-[#081F62]" />
             <h3 className="text-sm font-semibold">Machine Specifications</h3>
           </div>
           <div className="space-y-2 text-xs">
@@ -82,18 +82,18 @@ export function MachineDetailPage() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-3">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-[#2563EB]" />
+            <ClipboardList className="w-4 h-4 text-[#081F62]" />
             <h3 className="text-sm font-semibold">Current Production Assignment</h3>
           </div>
           {currentPlan ? (
             <div className="space-y-2 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-mono font-semibold text-[#2563EB]">{currentPlan.id}</span>
+                <span className="font-mono font-semibold text-[#081F62]">{currentPlan.id}</span>
                 <StatusBadge status={currentPlan.status} size="xs" />
               </div>
-              <p className="font-medium text-slate-800 dark:text-slate-100">
+              <p className="font-medium text-[#051747] dark:text-slate-100">
                 {products.find((p) => p.id === currentPlan.productId)?.name}
               </p>
               <p className="text-slate-500 tabular-nums">
@@ -108,9 +108,9 @@ export function MachineDetailPage() {
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-3">
+        <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-[#2563EB]" />
+            <Package className="w-4 h-4 text-[#081F62]" />
             <h3 className="text-sm font-semibold">Compatible Products ({compatibleProducts.length})</h3>
           </div>
           <div className="space-y-2">
@@ -118,7 +118,7 @@ export function MachineDetailPage() {
               <div
                 key={p.id}
                 onClick={() => navigate(`/products/${p.id}`)}
-                className="flex items-center justify-between text-xs p-2 rounded border border-slate-100 dark:border-slate-800 hover:border-[#2563EB]/60 cursor-pointer"
+                className="flex items-center justify-between text-xs p-2 rounded border border-slate-100 dark:border-slate-800 hover:border-[#081F62]/60 cursor-pointer"
               >
                 <span className="font-medium truncate">{p.name}</span>
                 <span className="font-mono text-[11px] text-slate-500 shrink-0 ml-2">{p.code}</span>
@@ -129,10 +129,10 @@ export function MachineDetailPage() {
       </div>
 
       {/* Availability Calendar / Weekly Schedule View */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Calendar className="w-4 h-4 text-[#2563EB]" />
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <Calendar className="w-4 h-4 text-[#081F62]" />
+          <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
             7-Day Availability Schedule
           </h3>
         </div>
@@ -152,7 +152,7 @@ export function MachineDetailPage() {
                 key={date}
                 className={`p-3 rounded-md border text-xs ${
                   isInactive
-                    ? 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+                    ? 'bg-slate-50 dark:bg-slate-800/40 border-[#535F80]/20 dark:border-slate-800'
                     : isMaintenance
                     ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/60'
                     : activeOnDate
@@ -160,7 +160,7 @@ export function MachineDetailPage() {
                     : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50'
                 }`}
               >
-                <div className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                <div className="font-semibold tabular-nums text-[#051747] dark:text-slate-100">
                   {formatDate(date)}
                 </div>
                 <div className="mt-1.5">
@@ -170,7 +170,7 @@ export function MachineDetailPage() {
                     <span className="text-amber-700 dark:text-amber-300 font-medium">Maintenance</span>
                   ) : activeOnDate ? (
                     <div>
-                      <div className="font-mono text-[11px] font-semibold text-[#2563EB]">
+                      <div className="font-mono text-[11px] font-semibold text-[#081F62]">
                         {activeOnDate.id}
                       </div>
                       <div className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
@@ -189,7 +189,7 @@ export function MachineDetailPage() {
 
       {/* Production History */}
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-3">
+        <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 mb-3">
           Production Execution History ({historyEntries.length})
         </h3>
         <DataTable

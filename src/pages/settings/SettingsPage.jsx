@@ -88,9 +88,9 @@ export function SettingsPage() {
           {/* Profile Card */}
           <form
             onSubmit={handleSaveProfile}
-            className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-4"
+            className="lg:col-span-2 bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-4"
           >
-            <div className="flex items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-4 pb-4 border-b border-[#535F80]/20 dark:border-slate-800">
               {profileForm.avatarUrl ? (
                 <img
                   src={profileForm.avatarUrl}
@@ -98,7 +98,7 @@ export function SettingsPage() {
                   className="w-14 h-14 rounded-lg object-cover border border-slate-200"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-lg bg-[#2563EB] text-white flex items-center justify-center text-lg font-bold">
+                <div className="w-14 h-14 rounded-lg bg-[#081F62] text-white flex items-center justify-center text-lg font-bold">
                   {currentUser.initials}
                 </div>
               )}
@@ -154,10 +154,10 @@ export function SettingsPage() {
           {/* Password UI Form */}
           <form
             onSubmit={handleSavePassword}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-4 h-fit"
+            className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-4 h-fit"
           >
             <div className="flex items-center gap-2 text-sm font-semibold">
-              <Lock className="w-4 h-4 text-[#2563EB]" />
+              <Lock className="w-4 h-4 text-[#081F62]" />
               Change Password (UI Demo)
             </div>
             <FormInput
@@ -197,11 +197,11 @@ export function SettingsPage() {
       {activeTab === 'notifications' && (
         <form
           onSubmit={handleSaveSettings}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-4 max-w-2xl"
+          className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-4 max-w-2xl"
         >
           <h3 className="text-sm font-semibold">Alert & Digest Preferences</h3>
           <div className="space-y-3 text-xs">
-            <label className="flex items-center justify-between p-3 rounded border border-slate-200 dark:border-slate-800 cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded border border-[#535F80]/20 dark:border-slate-800 cursor-pointer">
               <div>
                 <div className="font-medium">Low-Stock & Material Shortage Alerts</div>
                 <div className="text-slate-500">Notify when available unreserved material drops below reorder threshold.</div>
@@ -214,7 +214,7 @@ export function SettingsPage() {
                 }
               />
             </label>
-            <label className="flex items-center justify-between p-3 rounded border border-slate-200 dark:border-slate-800 cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded border border-[#535F80]/20 dark:border-slate-800 cursor-pointer">
               <div>
                 <div className="font-medium">In-App Toast & Badge Alerts</div>
                 <div className="text-slate-500">Show unread alert count in the top navigation bar.</div>
@@ -227,7 +227,7 @@ export function SettingsPage() {
                 }
               />
             </label>
-            <label className="flex items-center justify-between p-3 rounded border border-slate-200 dark:border-slate-800 cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded border border-[#535F80]/20 dark:border-slate-800 cursor-pointer">
               <div>
                 <div className="font-medium">Email Notification Digest</div>
                 <div className="text-slate-500">Configured summary cadence for future backend worker.</div>
@@ -270,7 +270,7 @@ export function SettingsPage() {
       {activeTab === 'company' && (
         <form
           onSubmit={handleSaveSettings}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-4 max-w-2xl"
+          className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-4 max-w-2xl"
         >
           <h3 className="text-sm font-semibold">Company & Plant Profile</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -317,7 +317,7 @@ export function SettingsPage() {
         <div className="space-y-4 max-w-2xl">
           <form
             onSubmit={handleSaveSettings}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-5 space-y-4"
+            className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-5 space-y-4"
           >
             <h3 className="text-sm font-semibold">System & Shop Floor Preferences</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -341,7 +341,7 @@ export function SettingsPage() {
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="flex items-center justify-between p-3 rounded border border-[#535F80]/20 dark:border-slate-800 text-xs">
               <div>
                 <div className="font-medium">Interface Color Theme</div>
                 <div className="text-slate-500">Current: {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</div>
@@ -356,12 +356,12 @@ export function SettingsPage() {
             </div>
           </form>
 
-          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-lg p-5 flex items-center justify-between gap-4">
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-lg p-5 flex items-center justify-between gap-4">
             <div>
-              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h4 className="text-sm font-semibold text-[#051747] dark:text-slate-100">
                 Reset Local Demo Data
               </h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#535F80] dark:text-slate-400 mt-0.5">
                 Restore all customers, BOMs, warehouse balances, plans, and transactions in LocalStorage back to the initial manufacturing seed dataset.
               </p>
             </div>

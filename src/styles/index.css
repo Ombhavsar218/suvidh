@@ -3,13 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --color-primary: #2563EB;
-  --color-primary-hover: #1D4ED8;
-  --color-bg-main: #F8FAFC;
-  --color-bg-card: #FFFFFF;
-  --color-text-main: #0F172A;
-  --color-text-secondary: #64748B;
-  --color-border: #E2E8F0;
+  --color-primary: #081F62;
+  --color-primary-hover: #051747;
+  --color-bg-main: #E7E9F0;
+  --color-bg-card: #FEFEFE;
+  --color-text-main: #051747;
+  --color-text-secondary: #535F80;
+  --color-border: #D5D9E5;
   --color-success: #16A34A;
   --color-warning: #D97706;
   --color-danger: #DC2626;
@@ -51,7 +51,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: rgba(83, 95, 128, 0.35);
   border-radius: 9999px;
 }
 
@@ -60,7 +60,7 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: rgba(83, 95, 128, 0.6);
 }
 
 /* Print-friendly layout for Reports and Billing Documents */

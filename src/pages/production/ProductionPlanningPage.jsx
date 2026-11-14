@@ -14,6 +14,7 @@ import {
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { Tooltip } from '../../components/common/Tooltip';
 import { Modal } from '../../components/common/Modal';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { DataTable } from '../../components/tables/DataTable';
@@ -282,7 +283,7 @@ export function ProductionPlanningPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <span className="font-mono text-xs font-semibold text-[#2563EB]">{r.id}</span>
+          <span className="font-mono text-xs font-semibold text-[#081F62]">{r.id}</span>
           <div className="text-[10px] text-slate-400">Rev {r.revision || 1}</div>
         </div>
       ),
@@ -294,7 +295,7 @@ export function ProductionPlanningPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-medium text-xs text-slate-900 dark:text-slate-100">{r.productName}</div>
+          <div className="font-medium text-xs text-[#051747] dark:text-slate-100">{r.productName}</div>
           <div className="text-[10px] font-mono text-slate-400">{r.productCode}</div>
         </div>
       ),
@@ -321,7 +322,7 @@ export function ProductionPlanningPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <span className="font-semibold text-slate-900 dark:text-slate-100">
+          <span className="font-semibold text-[#051747] dark:text-slate-100">
             {formatNumber(r.manufacturingRequirement)}
           </span>
           {r.matCheck.hasShortage && (
@@ -360,28 +361,29 @@ export function ProductionPlanningPage() {
       key: 'priority',
       label: 'Priority Score',
       render: (r) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPriorityModalPlan(r);
-          }}
-          className="text-left group cursor-pointer"
-          title="Click to inspect priority score breakdown (40/25/20/15)"
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold tabular-nums text-slate-900 dark:text-slate-100 group-hover:text-[#2563EB]">
-              {r.priority.totalScore}
-            </span>
-            <StatusBadge status={r.priority.level} size="xs" />
-          </div>
-          <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mt-1">
-            <div style={{ width: `${r.priority.breakdown[0].weighted}%` }} className="bg-[#2563EB]" />
-            <div style={{ width: `${r.priority.breakdown[1].weighted}%` }} className="bg-indigo-500" />
-            <div style={{ width: `${r.priority.breakdown[2].weighted}%` }} className="bg-emerald-500" />
-            <div style={{ width: `${r.priority.breakdown[3].weighted}%` }} className="bg-amber-500" />
-          </div>
-        </button>
+        <Tooltip content="Inspect priority breakdown (40/25/20/15)">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setPriorityModalPlan(r);
+            }}
+            className="text-left group cursor-pointer"
+          >
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold tabular-nums text-[#051747] dark:text-slate-100 group-hover:text-[#081F62]">
+                {r.priority.totalScore}
+              </span>
+              <StatusBadge status={r.priority.level} size="xs" />
+            </div>
+            <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex mt-1">
+              <div style={{ width: `${r.priority.breakdown[0].weighted}%` }} className="bg-[#2563EB]" />
+              <div style={{ width: `${r.priority.breakdown[1].weighted}%` }} className="bg-indigo-500" />
+              <div style={{ width: `${r.priority.breakdown[2].weighted}%` }} className="bg-emerald-500" />
+              <div style={{ width: `${r.priority.breakdown[3].weighted}%` }} className="bg-amber-500" />
+            </div>
+          </button>
+        </Tooltip>
       ),
     },
     {
@@ -396,22 +398,26 @@ export function ProductionPlanningPage() {
       align: 'right',
       render: (r) => (
         <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => openReviseModal(r)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="Revise Production Plan"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setRevisionModalPlan(r)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="View Plan Revisions"
-          >
-            <History className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip content="Revise Production Plan">
+            <button
+              type="button"
+              onClick={() => openReviseModal(r)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="Revise Production Plan"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
+          <Tooltip content="View Plan Revisions">
+            <button
+              type="button"
+              onClick={() => setRevisionModalPlan(r)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="View Plan Revisions"
+            >
+              <History className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
         </div>
       ),
     },
@@ -469,7 +475,7 @@ export function ProductionPlanningPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -590,11 +596,11 @@ export function ProductionPlanningPage() {
               value={form.availableFinishedStock}
               onChange={(e) => setForm({ ...form, availableFinishedStock: e.target.value })}
             />
-            <div className="p-2.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <div className="p-2.5 rounded-md border border-[#535F80]/30 dark:border-slate-700 bg-[#E7E9F0]/55 dark:bg-slate-800/50">
               <span className="text-[11px] font-medium text-slate-500 block">
                 Mfg Requirement
               </span>
-              <span className="text-lg font-bold text-[#2563EB] tabular-nums">
+              <span className="text-lg font-bold text-[#081F62] tabular-nums">
                 {formatNumber(formMfgRequirement)} units
               </span>
             </div>
@@ -661,8 +667,8 @@ export function ProductionPlanningPage() {
               </p>
             </div>
 
-            <div className="p-3 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-xs">
-              <div className="font-semibold text-slate-800 dark:text-slate-100 mb-1">
+            <div className="p-3 rounded-md border border-[#535F80]/30 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 text-xs">
+              <div className="font-semibold text-[#051747] dark:text-slate-100 mb-1">
                 Priority Score Preview: {formPriorityPreview.totalScore}/100 ({formPriorityPreview.level})
               </div>
               <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 dark:text-slate-400">
@@ -692,10 +698,10 @@ export function ProductionPlanningPage() {
                 No Bill of Materials defined for this product yet.
               </div>
             ) : (
-              <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-x-auto">
+              <div className="border border-[#535F80]/30 dark:border-slate-700 rounded-md overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <tr className="bg-slate-50 dark:bg-slate-800 border-b border-[#535F80]/30 dark:border-slate-700">
                       <th className="px-3 py-2 font-semibold">Material</th>
                       <th className="px-3 py-2 font-semibold text-right">Required</th>
                       <th className="px-3 py-2 font-semibold text-right">Usable Avail</th>
@@ -755,7 +761,7 @@ export function ProductionPlanningPage() {
       >
         {priorityModalPlan && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-3.5 rounded-lg bg-[#E7E9F0]/65 dark:bg-slate-800/60 border border-[#535F80]/30 dark:border-slate-700">
               <div>
                 <div className="text-xs text-slate-500">Weighted Priority Score</div>
                 <div className="text-2xl font-bold tabular-nums">
@@ -787,7 +793,7 @@ export function ProductionPlanningPage() {
             </div>
 
             {priorityModalPlan.matCheck.items.length > 0 && (
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="pt-3 border-t border-[#535F80]/20 dark:border-slate-800">
                 <h4 className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   Material Readiness Details
                 </h4>
@@ -826,10 +832,10 @@ export function ProductionPlanningPage() {
             {(revisionModalPlan.revisions || []).map((rev) => (
               <div
                 key={rev.version}
-                className="p-3 rounded-md border border-slate-200 dark:border-slate-700 text-xs"
+                className="p-3 rounded-md border border-[#535F80]/30 dark:border-slate-700 text-xs"
               >
                 <div className="flex items-center justify-between font-semibold">
-                  <span className="text-[#2563EB]">Revision {rev.version}</span>
+                  <span className="text-[#081F62]">Revision {rev.version}</span>
                   <span className="text-slate-400 tabular-nums">{rev.date}</span>
                 </div>
                 <p className="text-slate-700 dark:text-slate-300 mt-1">{rev.note}</p>

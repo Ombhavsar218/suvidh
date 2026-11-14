@@ -62,6 +62,40 @@ export function ErpDataProvider({ children }) {
     [addToast]
   );
 
+  const deleteCustomer = useCallback(
+    (customerId) => {
+      setState((prev) => {
+        const target = prev.customers.find((c) => c.id === customerId);
+        const name = target?.name || 'Customer';
+        return {
+          ...prev,
+          customers: prev.customers.filter((c) => c.id !== customerId),
+        };
+      });
+      addToast({
+        title: 'Customer Deleted',
+        message: 'Customer was removed from LocalStorage.',
+        type: 'info',
+      });
+    },
+    [addToast]
+  );
+
+  const importCustomersBatch = useCallback(
+    (newCustomers) => {
+      setState((prev) => ({
+        ...prev,
+        customers: [...newCustomers, ...prev.customers],
+      }));
+      addToast({
+        title: 'Customers Imported',
+        message: `${newCustomers.length} customer records loaded.`,
+        type: 'success',
+      });
+    },
+    [addToast]
+  );
+
   // --- Products ---
   const saveProduct = useCallback(
     (payload) => {
@@ -81,6 +115,40 @@ export function ErpDataProvider({ children }) {
       addToast({
         title: payload.id ? 'Product Updated (Local Demo)' : 'Product Added (Local Demo)',
         message: `${payload.name} saved locally.`,
+      });
+    },
+    [addToast]
+  );
+
+  const toggleProductStatus = useCallback(
+    (productId) => {
+      setState((prev) => ({
+        ...prev,
+        products: prev.products.map((p) =>
+          p.id === productId
+            ? { ...p, status: p.status === 'Active' ? 'Inactive' : 'Active' }
+            : p
+        ),
+      }));
+      addToast({ title: 'Product Status Updated', message: 'Saved locally.' });
+    },
+    [addToast]
+  );
+
+  const deleteProduct = useCallback(
+    (productId) => {
+      setState((prev) => {
+        const target = prev.products.find((p) => p.id === productId);
+        const name = target?.name || 'Product';
+        return {
+          ...prev,
+          products: prev.products.filter((p) => p.id !== productId),
+        };
+      });
+      addToast({
+        title: 'Product Deleted',
+        message: 'Product was removed from LocalStorage.',
+        type: 'info',
       });
     },
     [addToast]
@@ -113,6 +181,26 @@ export function ErpDataProvider({ children }) {
     [addToast]
   );
 
+  const deleteBom = useCallback(
+    (bomId) => {
+      setState((prev) => {
+        const target = prev.boms.find((b) => b.id === bomId);
+        const prod = prev.products.find((p) => p.id === target?.productId);
+        const name = prod?.name || target?.id || 'BOM';
+        return {
+          ...prev,
+          boms: prev.boms.filter((b) => b.id !== bomId),
+        };
+      });
+      addToast({
+        title: 'BOM Deleted',
+        message: 'Bill of Materials was removed from LocalStorage.',
+        type: 'info',
+      });
+    },
+    [addToast]
+  );
+
   // --- Suppliers ---
   const saveSupplier = useCallback(
     (payload) => {
@@ -124,6 +212,25 @@ export function ErpDataProvider({ children }) {
         return { ...prev, suppliers };
       });
       addToast({ title: 'Supplier Saved (Local Demo)', message: `${payload.name} saved.` });
+    },
+    [addToast]
+  );
+
+  const deleteSupplier = useCallback(
+    (supplierId) => {
+      setState((prev) => {
+        const target = prev.suppliers.find((s) => s.id === supplierId);
+        const name = target?.name || 'Supplier';
+        return {
+          ...prev,
+          suppliers: prev.suppliers.filter((s) => s.id !== supplierId),
+        };
+      });
+      addToast({
+        title: 'Supplier Deleted',
+        message: 'Supplier was removed from LocalStorage.',
+        type: 'info',
+      });
     },
     [addToast]
   );
@@ -152,6 +259,25 @@ export function ErpDataProvider({ children }) {
         return { ...prev, materials };
       });
       addToast({ title: 'Material Master Saved', message: `${payload.name} saved locally.` });
+    },
+    [addToast]
+  );
+
+  const deleteMaterial = useCallback(
+    (materialId) => {
+      setState((prev) => {
+        const target = prev.materials.find((m) => m.id === materialId);
+        const name = target?.name || 'Material';
+        return {
+          ...prev,
+          materials: prev.materials.filter((m) => m.id !== materialId),
+        };
+      });
+      addToast({
+        title: 'Material Deleted',
+        message: 'Raw material was removed from LocalStorage.',
+        type: 'info',
+      });
     },
     [addToast]
   );
@@ -297,6 +423,25 @@ export function ErpDataProvider({ children }) {
     [addToast]
   );
 
+  const deleteMachine = useCallback(
+    (machineId) => {
+      setState((prev) => {
+        const target = prev.machines.find((m) => m.id === machineId);
+        const name = target?.name || 'Machine';
+        return {
+          ...prev,
+          machines: prev.machines.filter((m) => m.id !== machineId),
+        };
+      });
+      addToast({
+        title: 'Machine Deleted',
+        message: 'Machine was removed from LocalStorage.',
+        type: 'info',
+      });
+    },
+    [addToast]
+  );
+
   // --- Customer Schedules ---
   const addSchedulesBatch = useCallback(
     (validRows, importSummary) => {
@@ -389,6 +534,25 @@ export function ErpDataProvider({ children }) {
       addToast({ title: 'Schedule Saved', message: `${payload.scheduleNumber} updated.` });
     },
     [addToast, currentUser]
+  );
+
+  const deleteSchedule = useCallback(
+    (scheduleId) => {
+      setState((prev) => {
+        const target = prev.schedules.find((s) => s.id === scheduleId);
+        const num = target?.scheduleNumber || 'Schedule';
+        return {
+          ...prev,
+          schedules: prev.schedules.filter((s) => s.id !== scheduleId),
+        };
+      });
+      addToast({
+        title: 'Schedule Deleted',
+        message: 'Customer schedule was removed from LocalStorage.',
+        type: 'info',
+      });
+    },
+    [addToast]
   );
 
   // --- Purchase Management ---
@@ -966,14 +1130,23 @@ export function ErpDataProvider({ children }) {
         ...state,
         saveCustomer,
         toggleCustomerStatus,
+        deleteCustomer,
+        importCustomersBatch,
         saveProduct,
+        toggleProductStatus,
+        deleteProduct,
         saveBom,
+        deleteBom,
         saveSupplier,
+        deleteSupplier,
         saveMaterial,
+        deleteMaterial,
         recordMaterialTransaction,
         saveMachine,
+        deleteMachine,
         addSchedulesBatch,
         saveSchedule,
+        deleteSchedule,
         savePurchaseOrder,
         updatePurchaseStatus,
         receivePurchaseItems,

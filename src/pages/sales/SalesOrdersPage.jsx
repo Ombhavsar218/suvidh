@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { Tooltip } from '../../components/common/Tooltip';
 import { DataTable } from '../../components/tables/DataTable';
 import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
@@ -91,7 +92,7 @@ export function SalesOrdersPage() {
       key: 'soNumber',
       label: 'Sales Order No.',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs font-semibold text-[#2563EB]">{r.soNumber}</span>,
+      render: (r) => <span className="font-mono text-xs font-semibold text-[#081F62]">{r.soNumber}</span>,
     },
     { key: 'customerName', label: 'Customer', sortable: true },
     {
@@ -153,23 +154,27 @@ export function SalesOrdersPage() {
       align: 'right',
       render: (r) => (
         <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => setDetailOrder(r)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="View Order Details"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          {r.status === 'Draft' && (
+          <Tooltip content="View Order Details">
             <button
               type="button"
-              onClick={(e) => openEdit(r, e)}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-              title="Edit Draft Order"
+              onClick={() => setDetailOrder(r)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="View Order Details"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5" />
             </button>
+          </Tooltip>
+          {r.status === 'Draft' && (
+            <Tooltip content="Edit Draft Order">
+              <button
+                type="button"
+                onClick={(e) => openEdit(r, e)}
+                className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+                aria-label="Edit Draft Order"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       ),
@@ -188,7 +193,7 @@ export function SalesOrdersPage() {
         }
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -317,15 +322,15 @@ export function SalesOrdersPage() {
         {detailOrder && (
           <div className="space-y-4 text-xs">
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-3 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Ordered Qty</span>
                 <strong className="text-base tabular-nums">{detailOrder.quantity}</strong>
               </div>
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-3 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Dispatched</span>
-                <strong className="text-base tabular-nums text-[#2563EB]">{detailOrder.dispatchedQty || 0}</strong>
+                <strong className="text-base tabular-nums text-[#081F62]">{detailOrder.dispatchedQty || 0}</strong>
               </div>
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-3 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Order Value</span>
                 <strong className="text-base tabular-nums">{formatCurrency(detailOrder.totalValue)}</strong>
               </div>
@@ -335,7 +340,7 @@ export function SalesOrdersPage() {
               {dispatches.filter((d) => d.salesOrderId === detailOrder.id).length === 0 ? (
                 <p className="text-slate-500">No dispatches recorded for this sales order yet.</p>
               ) : (
-                <div className="divide-y divide-slate-200 dark:divide-slate-700 border border-slate-200 dark:border-slate-700 rounded">
+                <div className="divide-y divide-slate-200 dark:divide-slate-700 border border-[#535F80]/30 dark:border-slate-700 rounded">
                   {dispatches
                     .filter((d) => d.salesOrderId === detailOrder.id)
                     .map((d) => (

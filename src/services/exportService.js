@@ -1,3 +1,5 @@
+import { buildXlsxBlob } from '../utils/excelParser';
+
 export function exportToCsv(filename, headers, rows) {
   const escapeCell = (value) => {
     const str = value === null || value === undefined ? '' : String(value);
@@ -39,6 +41,61 @@ export function downloadSampleScheduleCsv() {
     ['ERR-SCH-2026-1142', 'CUS-UNKNOWN', 'PRD-VLV-308', -45, 'invalid-date', 'Medium'],
   ];
   exportToCsv('Suvidh_Schedule_Import_Sample.csv', headers, rows);
+}
+
+export function downloadSampleCustomerXlsx() {
+  const headers = [
+    'Customer Code',
+    'Customer Name',
+    'Contact Person',
+    'Email',
+    'Phone',
+    'Address',
+    'Priority Tier',
+    'Status',
+  ];
+  const rows = [
+    [
+      'CUS-BFL-09',
+      'Bharat Forge Components',
+      'Siddharth Deshpande',
+      's.deshpande@bharatforge-demo.in',
+      '+91 98231 55410',
+      'Mundhwa Industrial Estate, Pune, Maharashtra 411036',
+      'Critical',
+      'Active',
+    ],
+    [
+      'CUS-CUM-10',
+      'Cummins India Drivetrain',
+      'Priya Gokhale',
+      'priya.gokhale@cummins-demo.in',
+      '+91 97640 88219',
+      'Kothrud Industrial Area, Pune, Maharashtra 411038',
+      'High',
+      'Active',
+    ],
+    [
+      'CUS-SKF-11',
+      'SKF Industrial Bearings',
+      'Arjun Kulkarni',
+      'arjun.k@skf-demo.in',
+      '+91 98501 74123',
+      'Chinchwad MIDC Sector II, Pune, Maharashtra 411019',
+      'Medium',
+      'Active',
+    ],
+  ];
+
+  const blob = buildXlsxBlob('Customers', headers, rows);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'Suvidh_Customers_Import_Template.xlsx');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 export function triggerPrint() {

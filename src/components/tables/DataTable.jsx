@@ -18,18 +18,18 @@ export function DataTable({
 }) {
   if (loading) {
     return (
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg">
         <LoadingState />
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-2xs overflow-hidden print-card">
+    <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg shadow-2xs overflow-hidden print-card">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
+            <tr className="bg-[#E7E9F0]/70 dark:bg-slate-800/60 border-b border-[#535F80]/20 dark:border-slate-800">
               {columns.map((col) => {
                 const isSorted = sortKey && sortKey === col.key;
                 const alignClass =
@@ -43,8 +43,8 @@ export function DataTable({
                   <th
                     key={col.key}
                     style={col.width ? { width: col.width } : undefined}
-                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap ${alignClass} ${
-                      col.sortable && onSort ? 'cursor-pointer select-none hover:text-slate-800 dark:hover:text-slate-200' : ''
+                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400 whitespace-nowrap ${alignClass} ${
+                      col.sortable && onSort ? 'cursor-pointer select-none hover:text-[#051747] dark:hover:text-slate-200' : ''
                     }`}
                     onClick={() => col.sortable && onSort && onSort(col.key)}
                   >
@@ -55,12 +55,12 @@ export function DataTable({
                     >
                       <span>{col.label}</span>
                       {col.sortable && onSort && (
-                        <span className="text-slate-400">
+                        <span className="text-[#535F80]/70">
                           {isSorted ? (
                             sortDir === 'asc' ? (
-                              <ArrowUp className="w-3 h-3 text-[#2563EB]" />
+                              <ArrowUp className="w-3 h-3 text-[#081F62]" />
                             ) : (
-                              <ArrowDown className="w-3 h-3 text-[#2563EB]" />
+                              <ArrowDown className="w-3 h-3 text-[#081F62]" />
                             )
                           ) : (
                             <ArrowUpDown className="w-3 h-3 opacity-60" />
@@ -74,7 +74,7 @@ export function DataTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+          <tbody className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-sm">
             {data.length === 0 ? (
               <tr>
                 <td colSpan={columns.length}>
@@ -92,8 +92,8 @@ export function DataTable({
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={`transition-colors ${
                     onRowClick
-                      ? 'cursor-pointer hover:bg-slate-50/90 dark:hover:bg-slate-800/40'
-                      : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/30'
+                      ? 'cursor-pointer hover:bg-[#E7E9F0]/55 dark:hover:bg-slate-800/40'
+                      : 'hover:bg-[#E7E9F0]/40 dark:hover:bg-slate-800/30'
                   }`}
                 >
                   {columns.map((col) => {
@@ -107,9 +107,10 @@ export function DataTable({
                     return (
                       <td
                         key={col.key}
-                        className={`px-4 py-3 text-slate-700 dark:text-slate-200 align-middle ${alignClass} ${
+                        style={col.width ? { width: col.width } : undefined}
+                        className={`px-4 py-3 text-[#051747] dark:text-slate-200 align-middle ${alignClass} ${
                           col.numeric ? 'tabular-nums' : ''
-                        } ${col.cellClassName || ''}`}
+                        } ${col.nowrap || col.key === 'code' ? 'whitespace-nowrap' : ''} ${col.cellClassName || ''}`}
                       >
                         {col.render ? col.render(row) : row[col.key] ?? '—'}
                       </td>

@@ -144,7 +144,7 @@ export function QualityControlPage() {
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-medium text-xs text-slate-900 dark:text-slate-100">{r.itemName}</div>
+          <div className="font-medium text-xs text-[#051747] dark:text-slate-100">{r.itemName}</div>
           <div className="text-[11px] text-slate-500">{r.itemType} · Ref: {r.reference}</div>
         </div>
       ),
@@ -208,8 +208,8 @@ export function QualityControlPage() {
             onClick={() => openInspectModal(r)}
             className={`px-2.5 py-1 text-xs font-medium rounded border cursor-pointer ${
               finalized
-                ? 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
-                : 'border-[#2563EB] bg-blue-50 text-[#2563EB] hover:bg-blue-100'
+                ? 'border-[#535F80]/30 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50'
+                : 'border-[#081F62] bg-blue-50 text-[#081F62] hover:bg-blue-100'
             }`}
           >
             {finalized ? 'View' : 'Inspect'}
@@ -277,7 +277,7 @@ export function QualityControlPage() {
         />
       </div>
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -357,7 +357,7 @@ export function QualityControlPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-xs">
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-3 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Inspected Qty</span>
                 <strong className="text-base tabular-nums">
                   {inspectTarget.inspectedQty} {inspectTarget.uom}

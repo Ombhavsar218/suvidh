@@ -4,6 +4,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { Tooltip } from '../../components/common/Tooltip';
 import { DataTable } from '../../components/tables/DataTable';
 import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
@@ -129,7 +130,7 @@ export function ProductionExecutionPage() {
       key: 'planId',
       label: 'Production Plan',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs text-[#2563EB]">{r.planId}</span>,
+      render: (r) => <span className="font-mono text-xs text-[#081F62]">{r.planId}</span>,
     },
     { key: 'machineCode', label: 'Machine', sortable: true },
     {
@@ -203,23 +204,27 @@ export function ProductionExecutionPage() {
       align: 'right',
       render: (r) => (
         <div className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => setDetailEntry(r)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="View Production Details"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
-          {r.status === 'Draft' && (
+          <Tooltip content="View Production Details">
             <button
               type="button"
-              onClick={(e) => openEdit(r, e)}
-              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-              title="Edit Draft Entry"
+              onClick={() => setDetailEntry(r)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="View Production Details"
             >
-              <Edit2 className="w-3.5 h-3.5" />
+              <Eye className="w-3.5 h-3.5" />
             </button>
+          </Tooltip>
+          {r.status === 'Draft' && (
+            <Tooltip content="Edit Draft Entry">
+              <button
+                type="button"
+                onClick={(e) => openEdit(r, e)}
+                className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+                aria-label="Edit Draft Entry"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+            </Tooltip>
           )}
         </div>
       ),
@@ -238,7 +243,7 @@ export function ProductionExecutionPage() {
         }
       />
 
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 mb-4 flex flex-wrap items-center justify-between gap-3">
         <SearchInput
           value={table.search}
           onChange={table.setSearch}
@@ -404,13 +409,13 @@ export function ProductionExecutionPage() {
         {detailEntry && (
           <div className="space-y-4 text-xs">
             <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-3 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Planned Qty</span>
                 <strong className="text-base tabular-nums">{detailEntry.plannedQty}</strong>
               </div>
-              <div className="p-3 rounded border border-slate-200 dark:border-slate-700">
+              <div className="p-3 rounded border border-[#535F80]/30 dark:border-slate-700">
                 <span className="text-slate-500 block">Actual Qty</span>
-                <strong className="text-base tabular-nums text-[#2563EB]">{detailEntry.actualQty}</strong>
+                <strong className="text-base tabular-nums text-[#081F62]">{detailEntry.actualQty}</strong>
               </div>
               <div className="p-3 rounded border border-emerald-200 dark:border-emerald-800">
                 <span className="text-emerald-600 block">Good Output</span>

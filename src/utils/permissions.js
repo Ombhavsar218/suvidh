@@ -38,6 +38,7 @@ export const ROLE_ALLOWED_MODULES = {
     'inventory-analytics',
     'notifications',
     'users',
+    'changelog',
     'settings',
   ],
   Store: [
@@ -51,6 +52,7 @@ export const ROLE_ALLOWED_MODULES = {
     'inventory-analytics',
     'reports',
     'notifications',
+    'changelog',
     'settings',
   ],
   Production: [
@@ -66,6 +68,7 @@ export const ROLE_ALLOWED_MODULES = {
     'production-analytics',
     'reports',
     'notifications',
+    'changelog',
     'settings',
   ],
   Quality: [
@@ -78,6 +81,7 @@ export const ROLE_ALLOWED_MODULES = {
     'finished-goods',
     'reports',
     'notifications',
+    'changelog',
     'settings',
   ],
 };

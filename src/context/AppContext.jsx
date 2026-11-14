@@ -2,9 +2,11 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { storageService } from '../services/storageService';
 import { ROLES } from '../utils/permissions';
 
-const AppContext = createContext(null);
+const AppContext =
+  globalThis.__SUVIDH_APP_CONTEXT__ ||
+  (globalThis.__SUVIDH_APP_CONTEXT__ = createContext(null));
 
-const ROLE_PROFILES = {
+export const ROLE_PROFILES = {
   Admin: {
     id: 'USR-001',
     name: 'Vikram Deshmukh',
@@ -44,6 +46,9 @@ const ROLE_PROFILES = {
 };
 
 export function AppProvider({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    storageService.loadPreference('is_authenticated', false)
+  );
   const [theme, setTheme] = useState(() => storageService.loadPreference('theme', 'light'));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     storageService.loadPreference('sidebar_collapsed', false)
@@ -76,6 +81,10 @@ export function AppProvider({ children }) {
     storageService.savePreference('demo_role', activeRole);
   }, [activeRole]);
 
+  useEffect(() => {
+    storageService.savePreference('is_authenticated', isAuthenticated);
+  }, [isAuthenticated]);
+
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
   }, []);
@@ -95,6 +104,44 @@ export function AppProvider({ children }) {
   const dismissToast = useCallback((id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const login = useCallback(
+    ({ email, password, role }) => {
+      const normalizedEmail = (email || '').trim().toLowerCase();
+      if (!normalizedEmail || !normalizedEmail.includes('@')) {
+        return { ok: false, error: 'Please enter a valid work email address.' };
+      }
+      if (!password || password.trim().length < 4) {
+        return { ok: false, error: 'Please enter your password (minimum 4 characters).' };
+      }
+
+      const matchedEntry = Object.values(ROLE_PROFILES).find(
+        (p) => p.email.toLowerCase() === normalizedEmail
+      );
+      const targetRole = matchedEntry?.role || role || ROLES.ADMIN;
+      const targetProfile = ROLE_PROFILES[targetRole] || ROLE_PROFILES.Admin;
+
+      setActiveRole(targetRole);
+      setIsAuthenticated(true);
+      addToast({
+        title: `Welcome back, ${targetProfile.name}`,
+        message: `Signed in under ${targetRole} role (local demo session).`,
+        type: 'success',
+      });
+      return { ok: true };
+    },
+    [addToast]
+  );
+
+  const logout = useCallback(() => {
+    setIsAuthenticated(false);
+    setMobileMenuOpen(false);
+    addToast({
+      title: 'Signed out of Suvidh ERP',
+      message: 'Local workstation session closed.',
+      type: 'info',
+    });
+  }, [addToast]);
 
   const switchRole = useCallback(
     (role) => {
@@ -139,6 +186,9 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider
       value={{
+        isAuthenticated,
+        login,
+        logout,
         theme,
         toggleTheme,
         sidebarCollapsed,

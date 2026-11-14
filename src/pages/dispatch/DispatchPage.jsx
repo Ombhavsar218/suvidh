@@ -5,6 +5,7 @@ import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons'
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { Tabs } from '../../components/common/Tabs';
+import { Tooltip } from '../../components/common/Tooltip';
 import { DataTable } from '../../components/tables/DataTable';
 import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
@@ -97,7 +98,7 @@ export function DispatchPage() {
       key: 'dispatchNumber',
       label: 'Dispatch No.',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs font-semibold text-[#2563EB]">{r.dispatchNumber}</span>,
+      render: (r) => <span className="font-mono text-xs font-semibold text-[#081F62]">{r.dispatchNumber}</span>,
     },
     { key: 'customerName', label: 'Customer', sortable: true },
     {
@@ -131,19 +132,21 @@ export function DispatchPage() {
       align: 'right',
       render: (r) => (
         <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={() => setDetailDispatch(r)}
-            className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-[#2563EB] cursor-pointer"
-            title="View Dispatch Details"
-          >
-            <Eye className="w-3.5 h-3.5" />
-          </button>
+          <Tooltip content="View Dispatch Details">
+            <button
+              type="button"
+              onClick={() => setDetailDispatch(r)}
+              className="p-1.5 rounded hover:bg-[#E7E9F0]/70 dark:hover:bg-slate-800 text-[#535F80] hover:text-[#081F62] cursor-pointer"
+              aria-label="View Dispatch Details"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
           {r.deliveryStatus === 'Pending Dispatch' && (
             <button
               type="button"
               onClick={() => updateDispatchStatus(r.id, 'In Transit')}
-              className="px-2 py-1 text-[11px] font-medium rounded border border-blue-200 bg-blue-50 text-[#2563EB] cursor-pointer"
+              className="px-2 py-1 text-[11px] font-medium rounded border border-blue-200 bg-blue-50 text-[#081F62] cursor-pointer"
             >
               Ship
             </button>
@@ -185,7 +188,7 @@ export function DispatchPage() {
 
       {activeTab === 'dispatches' && (
         <>
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 flex flex-wrap items-center justify-between gap-3">
             <SearchInput
               value={table.search}
               onChange={table.setSearch}
@@ -340,7 +343,7 @@ export function DispatchPage() {
           <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
             <div className="flex justify-between">
               <span>Product</span>
-              <strong className="text-slate-900 dark:text-slate-100">{detailDispatch.productName}</strong>
+              <strong className="text-[#051747] dark:text-slate-100">{detailDispatch.productName}</strong>
             </div>
             <div className="flex justify-between">
               <span>Dispatched Quantity</span>
@@ -358,7 +361,7 @@ export function DispatchPage() {
               <span>Delivery Status</span>
               <StatusBadge status={detailDispatch.deliveryStatus} size="xs" />
             </div>
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div className="pt-2 border-t border-[#535F80]/30 dark:border-slate-700">
               <span className="text-slate-500 block mb-1">Remarks</span>
               <p>{detailDispatch.remarks || 'Standard delivery challan attached.'}</p>
             </div>

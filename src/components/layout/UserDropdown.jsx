@@ -1,16 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, User, Settings, /* Shield, */ RotateCcw, LogOut, History } from 'lucide-react';
+import { ChevronDown, User, Settings, Shield, RotateCcw, LogOut, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
-// import { ROLES } from '../../utils/permissions';
+import { ROLES } from '../../utils/permissions';
 import { CURRENT_VERSION } from '../../data/changelogData';
 
 export function UserDropdown({ onOpenChangelog }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const navigate = useNavigate();
-  const { currentUser, activeRole, /* switchRole, */ logout } = useApp();
+  const { currentUser, activeRole, switchRole, logout } = useApp();
   const { resetAllDemoData } = useErpData();
 
   useEffect(() => {
@@ -54,11 +54,10 @@ export function UserDropdown({ onOpenChangelog }) {
             <p className="text-[10px] text-[#535F80]/80 mt-1">{currentUser.department}</p>
           </div>
 
-          {/* Demo Role Switcher (Commented out)
           <div className="px-3 py-2.5 border-b border-[#E7E9F0] dark:border-slate-800 bg-[#E7E9F0]/60 dark:bg-slate-800/40">
             <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400 mb-2 px-1">
-              <Shield className="w-3 h-3" />
-              Demo Role Switcher
+              <Shield className="w-3 h-3 text-[#081F62]" />
+              Role Switcher
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               {Object.values(ROLES).map((role) => (
@@ -76,11 +75,7 @@ export function UserDropdown({ onOpenChangelog }) {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-[#535F80] mt-1.5 px-1 leading-snug">
-              UI preview only. Server must enforce real access control.
-            </p>
           </div>
-          */}
 
           <div className="py-1.5">
             <button

@@ -170,7 +170,9 @@ export function AppSidebar({ onOpenChangelog }) {
                       const Icon = item.icon;
                       const isActive =
                         location.pathname === item.path ||
-                        location.pathname.startsWith(`${item.path}/`);
+                        (item.path !== '/inventory' && location.pathname.startsWith(`${item.path}/`)) ||
+                        (item.key === 'stock-inward' && (location.pathname === '/inventory/inward' || location.pathname.startsWith('/inventory/inward/'))) ||
+                        (item.key === 'stock-outward' && (location.pathname === '/inventory/outward' || location.pathname.startsWith('/inventory/outward/')));
                       const isChangelogItem = item.key === 'changelog';
 
                       return (

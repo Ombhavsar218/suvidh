@@ -37,6 +37,12 @@ const MaterialsPage = lazy(() =>
 const InventoryPage = lazy(() =>
   import('../pages/materials/InventoryPage').then((m) => ({ default: m.InventoryPage }))
 );
+const StockInwardPage = lazy(() =>
+  import('../pages/materials/StockInwardPage').then((m) => ({ default: m.StockInwardPage }))
+);
+const StockOutwardPage = lazy(() =>
+  import('../pages/materials/StockOutwardPage').then((m) => ({ default: m.StockOutwardPage }))
+);
 const MachinesPage = lazy(() =>
   import('../pages/machines/MachinesPage').then((m) => ({ default: m.MachinesPage }))
 );
@@ -216,6 +222,22 @@ export function AppRoutes() {
         <Route
           path="/inventory"
           element={<RoleGate moduleKey="inventory"><InventoryPage /></RoleGate>}
+        />
+        <Route
+          path="/stock-inward"
+          element={<RoleGate moduleKey="stock-inward"><StockInwardPage /></RoleGate>}
+        />
+        <Route
+          path="/inventory/inward"
+          element={<RoleGate moduleKey="stock-inward"><StockInwardPage /></RoleGate>}
+        />
+        <Route
+          path="/stock-outward"
+          element={<RoleGate moduleKey="stock-outward"><StockOutwardPage /></RoleGate>}
+        />
+        <Route
+          path="/inventory/outward"
+          element={<RoleGate moduleKey="stock-outward"><StockOutwardPage /></RoleGate>}
         />
         <Route
           path="/machines"

@@ -9,6 +9,16 @@ import {
   ArrowRight,
   Wallet,
   Receipt,
+  CheckCircle2,
+  Lock,
+  ShoppingBag,
+  Warehouse,
+  Clock,
+  ArrowDownToLine,
+  ExternalLink,
+  ShieldCheck,
+  Star,
+  Layers,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -21,31 +31,25 @@ import {
   Legend,
   AreaChart,
   Area,
-  // PieChart,
-  // Pie,
-  // Cell,
 } from 'recharts';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { ChartCard } from '../../components/charts/ChartCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
-// import { SecondaryButton } from '../../components/common/Buttons';
+import { SecondaryButton } from '../../components/common/Buttons';
+import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
 import { getMaterialComputedFields } from '../../services/erpService';
 import { monthlyProductionTrend } from '../../data/productionData';
 import { formatNumber, formatDate, formatCurrency, getDaysRemaining } from '../../utils/formatters';
 
-/*
-const ORDER_COLORS = {
-  Pending: '#D97706',
-  'In Production': '#2563EB',
-  Completed: '#16A34A',
-  Dispatched: '#4F46E5',
-};
-*/
-
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { activeRole } = useApp();
+  const isStoreRole = activeRole === 'Store';
+  const [adminPerspective, setAdminPerspective] = useState('executive'); // 'executive' | 'store'
+  const isStoreView = isStoreRole || adminPerspective === 'store';
+
   const {
     customers,
     products,
@@ -57,11 +61,14 @@ export function DashboardPage() {
     productionEntries,
     financeTransactions,
     billingDocuments,
-    // salesOrders,
+    materialTransactions = [],
+    suppliers = [],
+    finishedGoods = [],
   } = useErpData();
 
   const [horizonFilter, setHorizonFilter] = useState('6M');
 
+  // Computed materials for real-time inventory calculations
   const computedMaterials = useMemo(
     () => materials.map(getMaterialComputedFields),
     [materials]
@@ -72,6 +79,110 @@ export function DashboardPage() {
     [computedMaterials]
   );
 
+  // ---------------------------------------------------------------------------
+  // STORE DASHBOARD METRICS & DATA
+  // ---------------------------------------------------------------------------
+  const totalPhysicalStock = useMemo(
+    () => computedMaterials.reduce((sum, m) => sum + (m.totalPhysicalStock || 0), 0),
+    [computedMaterials]
+  );
+
+  const totalUsableAvailableMaterial = useMemo(
+    () => computedMaterials.reduce((sum, m) => sum + (m.availableQty || 0), 0),
+    [computedMaterials]
+  );
+
+  const totalReservedMaterial = useMemo(
+    () => computedMaterials.reduce((sum, m) => sum + (m.reservedQty || 0), 0),
+    [computedMaterials]
+  );
+
+  const totalInventoryValuation = useMemo(
+    () =>
+      computedMaterials.reduce(
+        (sum, m) => sum + (m.totalPhysicalStock || 0) * (Number(m.unitCost) || 0),
+        0
+      ),
+    [computedMaterials]
+  );
+
+  const qcQuarantineMaterials = useMemo(
+    () =>
+      computedMaterials.filter(
+        (m) => (m.pendingInspectionQty || 0) > 0 || (m.rejectedQty || 0) > 0
+      ),
+    [computedMaterials]
+  );
+
+  const openPurchaseOrders = useMemo(
+    () =>
+      (purchaseOrders || [])
+        .filter((po) => po.status !== 'Received' && po.status !== 'Cancelled')
+        .sort((a, b) => new Date(a.expectedArrival) - new Date(b.expectedArrival)),
+    [purchaseOrders]
+  );
+
+  const pendingInwardUnits = useMemo(
+    () =>
+      openPurchaseOrders.reduce((sum, po) => {
+        const poPending = (po.items || []).reduce(
+          (itemSum, it) => itemSum + Math.max(0, (it.orderedQty || 0) - (it.receivedQty || 0)),
+          0
+        );
+        return sum + poPending;
+      }, 0),
+    [openPurchaseOrders]
+  );
+
+  // Store Chart 1: Raw Material Stock Allocation by Grade
+  const storeAllocationData = useMemo(() => {
+    return computedMaterials.slice(0, 6).map((m) => ({
+      name: m.code.replace('RM-', ''),
+      fullName: m.name,
+      Available: m.availableQty,
+      Reserved: m.reservedQty,
+      'QC Hold': (m.pendingInspectionQty || 0) + (m.rejectedQty || 0),
+    }));
+  }, [computedMaterials]);
+
+  // Store Chart 2: Inventory Valuation by Material Category
+  const categoryValuationData = useMemo(() => {
+    const map = {};
+    computedMaterials.forEach((m) => {
+      const cat = m.category || 'General';
+      const val = (m.totalPhysicalStock || 0) * (Number(m.unitCost) || 0);
+      map[cat] = (map[cat] || 0) + val;
+    });
+    return Object.entries(map).map(([name, valuation]) => ({
+      name: name.length > 13 ? name.slice(0, 11) + '…' : name,
+      fullName: name,
+      Valuation: valuation,
+    }));
+  }, [computedMaterials]);
+
+  // Store Chart 3: Stock Movement Volume Ledger
+  const storeMovementData = useMemo(() => {
+    const counts = { Inward: 0, Outward: 0, Reservation: 0, Adjustment: 0 };
+    (materialTransactions || []).forEach((txn) => {
+      const type = txn.type || 'Adjustment';
+      const qty = Math.abs(Number(txn.quantity || 0));
+      if (counts[type] !== undefined) {
+        counts[type] += qty;
+      } else {
+        counts[type] = (counts[type] || 0) + qty;
+      }
+    });
+    return [
+      { name: 'Inward (GRN)', Units: counts.Inward, fill: '#10B981' },
+      { name: 'Issued (Out)', Units: counts.Outward, fill: '#2563EB' },
+      { name: 'Reserved', Units: counts.Reservation, fill: '#6366F1' },
+      { name: 'Adjusted', Units: counts.Adjustment, fill: '#F59E0B' },
+    ];
+  }, [materialTransactions]);
+
+  // ---------------------------------------------------------------------------
+  // EXECUTIVE DASHBOARD METRICS & DATA (FOR ADMIN OVERVIEW ONLY)
+  // ---------------------------------------------------------------------------
   const companyFunds = useMemo(() => {
     const settledInflow = financeTransactions
       .filter((t) => t.type === 'Income' && t.paymentStatus !== 'Pending')
@@ -119,14 +230,7 @@ export function DashboardPage() {
     return { items, totalDue };
   }, [billingDocuments, customers]);
 
-  // Summary metrics
-  const totalUsableAvailableMaterial = computedMaterials.reduce(
-    (sum, m) => sum + m.availableQty,
-    0
-  );
-  const pendingProductionPlans = productionPlans.filter(
-    (p) => p.status !== 'Completed'
-  );
+  const pendingProductionPlans = productionPlans.filter((p) => p.status !== 'Completed');
   const pendingProductionQty = pendingProductionPlans.reduce(
     (sum, p) => sum + Number(p.manufacturingRequirement || 0),
     0
@@ -139,7 +243,6 @@ export function DashboardPage() {
     0
   );
 
-  // Chart 1: Production Overview (Planned vs Actual vs Rejected by Plan)
   const productionOverviewData = useMemo(() => {
     return productionPlans.slice(0, 6).map((plan) => {
       const entries = productionEntries.filter((e) => e.planId === plan.id);
@@ -155,14 +258,10 @@ export function DashboardPage() {
     });
   }, [productionPlans, productionEntries, products]);
 
-  // Chart 2: Monthly Production Trend
   const trendData = useMemo(() => {
-    return horizonFilter === '3M'
-      ? monthlyProductionTrend.slice(-3)
-      : monthlyProductionTrend;
+    return horizonFilter === '3M' ? monthlyProductionTrend.slice(-3) : monthlyProductionTrend;
   }, [horizonFilter]);
 
-  // Chart 3: Inventory Overview (Available vs Reserved vs Shortage)
   const inventoryChartData = useMemo(() => {
     return computedMaterials.slice(0, 6).map((m) => ({
       name: m.code.replace('RM-', ''),
@@ -172,45 +271,530 @@ export function DashboardPage() {
     }));
   }, [computedMaterials]);
 
-  /* Chart 4: Order Status Distribution (Commented out)
-  const orderStatusData = useMemo(() => {
-    const counts = {
-      Pending: 0,
-      'In Production': 0,
-      Completed: 0,
-      Dispatched: 0,
-    };
-    salesOrders.forEach((so) => {
-      if (so.status === 'Draft' || so.status === 'Pending') counts.Pending += 1;
-      else if (counts[so.status] !== undefined) counts[so.status] += 1;
-    });
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [salesOrders]);
-  */
-
   const upcomingDeliveries = useMemo(() => {
     return [...pendingDeliverySchedules]
       .sort((a, b) => new Date(a.requiredDate) - new Date(b.requiredDate))
       .slice(0, 5);
   }, [pendingDeliverySchedules]);
 
+  // Perspective Switcher Button Group (Visible when Admin views the dashboard)
+  const perspectiveSwitcher = activeRole === 'Admin' && (
+    <div className="inline-flex rounded-lg border border-[#535F80]/25 dark:border-slate-800 p-0.5 bg-[#E7E9F0]/60 dark:bg-slate-800/60 text-xs shrink-0">
+      <button
+        type="button"
+        onClick={() => setAdminPerspective('executive')}
+        className={`px-3 py-1 font-medium rounded-md transition-colors cursor-pointer ${
+          adminPerspective === 'executive'
+            ? 'bg-[#081F62] text-[#FEFEFE] shadow-2xs'
+            : 'text-[#535F80] dark:text-slate-400 hover:text-[#051747] dark:hover:text-slate-200'
+        }`}
+      >
+        Executive Overview
+      </button>
+      <button
+        type="button"
+        onClick={() => setAdminPerspective('store')}
+        className={`px-3 py-1 font-medium rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+          adminPerspective === 'store'
+            ? 'bg-[#081F62] text-[#FEFEFE] shadow-2xs'
+            : 'text-[#535F80] dark:text-slate-400 hover:text-[#051747] dark:hover:text-slate-200'
+        }`}
+      >
+        <Warehouse className="w-3.5 h-3.5" />
+        Store Operations
+      </button>
+    </div>
+  );
+
+  // ===========================================================================
+  // RENDER: STORE OPERATIONS DASHBOARD
+  // Only store, inventory, supplier, purchase receipt, and warehouse items
+  // ===========================================================================
+  if (isStoreView) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Store & Warehouse Operations"
+          badge={
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-md bg-[#081F62]/10 dark:bg-blue-950/60 text-[#081F62] dark:text-blue-400 border border-[#081F62]/20 dark:border-blue-800/40">
+              <Warehouse className="w-3.5 h-3.5" />
+              Store Operations
+            </span>
+          }
+          description="Real-time raw material stock, inventory valuation, vendor inwards, QC quarantine holds, and stock movements."
+          actions={
+            <div className="flex flex-wrap items-center gap-2.5">
+              {perspectiveSwitcher}
+              <SecondaryButton
+                size="sm"
+                icon={ArrowDownToLine}
+                onClick={() => navigate('/stock-inward')}
+              >
+                Stock Inward
+              </SecondaryButton>
+              <SecondaryButton
+                size="sm"
+                icon={ShoppingBag}
+                onClick={() => navigate('/purchases')}
+              >
+                Purchase Orders
+              </SecondaryButton>
+            </div>
+          }
+        />
+
+        {/* 4 Store Summary StatCards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Physical Stock"
+            value={`${formatNumber(totalPhysicalStock)} Units`}
+            trend={`${lowStockMaterials.length} low stock alerts`}
+            trendDirection={lowStockMaterials.length > 0 ? 'down' : 'up'}
+            sublabel={`${materials.length} raw material grades in warehouse`}
+            icon={Boxes}
+            tone={lowStockMaterials.length > 0 ? 'amber' : 'blue'}
+            onClick={() => navigate('/inventory')}
+          />
+          <StatCard
+            label="Net Usable Available"
+            value={`${formatNumber(totalUsableAvailableMaterial)} Units`}
+            trend={`Valuation: ${formatCurrency(totalInventoryValuation)}`}
+            trendDirection="up"
+            sublabel="Unreserved & ready for issuance"
+            icon={CheckCircle2}
+            tone="green"
+            onClick={() => navigate('/inventory')}
+          />
+          <StatCard
+            label="Reserved for Production"
+            value={`${formatNumber(totalReservedMaterial)} Units`}
+            trend="Allocated to shop floor batches"
+            trendDirection="neutral"
+            sublabel="Quarantine & reserved stock held"
+            icon={Lock}
+            tone="blue"
+            onClick={() => navigate('/inventory')}
+          />
+          <StatCard
+            label="Pending Vendor Receipts"
+            value={`${openPurchaseOrders.length} Open POs`}
+            trend={`${formatNumber(pendingInwardUnits)} units awaiting delivery`}
+            trendDirection={pendingInwardUnits > 0 ? 'neutral' : 'up'}
+            sublabel="Incoming vendor shipments"
+            icon={Truck}
+            tone={openPurchaseOrders.length > 0 ? 'amber' : 'green'}
+            onClick={() => navigate('/purchases')}
+          />
+        </div>
+
+        {/* 3 Store Recharts Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Chart 1: Raw Material Stock Allocation by Grade */}
+          <ChartCard
+            title="Raw Material Allocation by Grade"
+            subtitle="Available unreserved vs production reserved vs QC hold"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={storeAllocationData}
+                margin={{ top: 6, right: 6, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
+                <YAxis width={36} tick={{ fontSize: 10, fill: '#64748B' }} />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '11px' }} />
+                <Bar dataKey="Available" fill="#10B981" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Reserved" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="QC Hold" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* Chart 2: Inventory Valuation by Material Category */}
+          <ChartCard
+            title="Inventory Valuation by Category"
+            subtitle="Current warehouse stock value (₹) grouped by category"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={categoryValuationData}
+                margin={{ top: 6, right: 6, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
+                <YAxis
+                  width={44}
+                  tick={{ fontSize: 10, fill: '#64748B' }}
+                  tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  formatter={(val) => [formatCurrency(val), 'Valuation']}
+                  contentStyle={{
+                    fontSize: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                  }}
+                />
+                <Bar dataKey="Valuation" fill="#081F62" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          {/* Chart 3: Stock Movement Volume Ledger */}
+          <ChartCard
+            title="Store Movement Activity"
+            subtitle="Units processed by transaction type"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={storeMovementData}
+                margin={{ top: 6, right: 6, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
+                <YAxis width={36} tick={{ fontSize: 10, fill: '#64748B' }} />
+                <Tooltip
+                  formatter={(val) => [`${formatNumber(val)} Units`, 'Volume']}
+                  contentStyle={{
+                    fontSize: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E2E8F0',
+                  }}
+                />
+                <Bar dataKey="Units" fill="#6366F1" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </div>
+
+        {/* 6 Store Operational Widget Sections (3x2 Grid) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {/* 1. Low-Stock & Reorder Alerts */}
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                Low-Stock &amp; Reorder Alerts
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/inventory')}
+                className="text-xs font-medium text-[#081F62] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Inventory <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+              {lowStockMaterials.length === 0 ? (
+                <div className="py-6 text-center text-slate-500">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+                  <p>All raw material stocks exceed minimum reorder thresholds.</p>
+                </div>
+              ) : (
+                lowStockMaterials.map((mat) => {
+                  const shortage = Math.max(0, mat.reorderLevel - mat.availableQty);
+                  return (
+                    <div
+                      key={mat.id}
+                      onClick={() => navigate('/inventory')}
+                      className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                          {mat.name}
+                        </p>
+                        <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                          {mat.code} · Reorder: {mat.reorderLevel} {mat.uom}
+                          {shortage > 0 && ` (Deficit: ${shortage})`}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-semibold text-red-600 tabular-nums">
+                          {mat.availableQty} {mat.uom}
+                        </div>
+                        <StatusBadge status="Low Stock" size="xs" />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 2. Incoming Vendor Shipments (Open POs) */}
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+                <Truck className="w-4 h-4 text-[#081F62] dark:text-blue-400" />
+                Incoming Vendor Shipments
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/purchases')}
+                className="text-xs font-medium text-[#081F62] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Purchases <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+              {openPurchaseOrders.length === 0 ? (
+                <div className="py-6 text-center text-slate-500">
+                  <Truck className="w-6 h-6 text-slate-400 mx-auto mb-1.5" />
+                  <p>No open purchase orders pending delivery.</p>
+                </div>
+              ) : (
+                openPurchaseOrders.slice(0, 4).map((po) => {
+                  const sup = suppliers.find((s) => s.id === po.supplierId);
+                  const daysLeft = getDaysRemaining(po.expectedArrival);
+                  return (
+                    <div
+                      key={po.id}
+                      onClick={() => navigate(`/purchases/${po.id}`)}
+                      className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                          {po.poNumber} — {sup?.name || po.supplierId}
+                        </p>
+                        <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                          ETA: {formatDate(po.expectedArrival)} · {po.items?.length || 0} line item(s)
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                          {formatCurrency(po.totalAmount)}
+                        </div>
+                        <span
+                          className={`text-[10px] font-medium block ${
+                            daysLeft <= 2 ? 'text-red-600' : 'text-amber-600'
+                          }`}
+                        >
+                          {daysLeft <= 0 ? 'Due today' : `In ${daysLeft}d`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* 3. QC Inspection Holds & Quarantine Store */}
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+                QC Quarantine &amp; Inspection Holds
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/inventory')}
+                className="text-xs font-medium text-[#081F62] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Inventory <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+              {qcQuarantineMaterials.length === 0 ? (
+                <div className="py-6 text-center text-slate-500">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500 mx-auto mb-1.5" />
+                  <p>No raw materials currently in QC hold or quarantine bay.</p>
+                </div>
+              ) : (
+                qcQuarantineMaterials.slice(0, 4).map((mat) => (
+                  <div
+                    key={mat.id}
+                    onClick={() => navigate('/inventory')}
+                    className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                        {mat.name}
+                      </p>
+                      <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                        {mat.code} · Location: {mat.location || 'Rack Q-01'}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {mat.pendingInspectionQty > 0 && (
+                        <span className="text-[11px] font-semibold text-amber-600 block tabular-nums">
+                          {mat.pendingInspectionQty} {mat.uom} In QC
+                        </span>
+                      )}
+                      {mat.rejectedQty > 0 && (
+                        <span className="text-[11px] font-semibold text-red-600 block tabular-nums">
+                          {mat.rejectedQty} {mat.uom} Scrap
+                        </span>
+                      )}
+                      <StatusBadge
+                        status={mat.rejectedQty > 0 ? 'Rejected' : 'Pending Inspection'}
+                        size="xs"
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 4. Recent Store Movements (Stock Ledger) */}
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#081F62] dark:text-blue-400" />
+                Recent Store Movements
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/inventory')}
+                className="text-xs font-medium text-[#081F62] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                View Ledger <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+              {(materialTransactions || []).slice(0, 4).map((txn) => {
+                const mat = materials.find((m) => m.id === txn.materialId);
+                const isInward = txn.type === 'Inward';
+                const isOutward = txn.type === 'Outward';
+                return (
+                  <div key={txn.id} className="py-2.5 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                        {txn.reference || txn.id} — {mat?.name || txn.materialId}
+                      </p>
+                      <p className="text-[11px] text-[#535F80] dark:text-slate-400 truncate">
+                        {txn.timestamp} · {txn.performedBy}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div
+                        className={`font-semibold tabular-nums ${
+                          isInward
+                            ? 'text-emerald-600'
+                            : isOutward
+                            ? 'text-blue-600'
+                            : 'text-[#051747] dark:text-slate-200'
+                        }`}
+                      >
+                        {txn.quantity > 0 ? `+${txn.quantity}` : txn.quantity} {mat?.uom || 'Kg'}
+                      </div>
+                      <StatusBadge status={txn.type} size="xs" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. Approved Suppliers & Lead Times */}
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+                <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                Approved Suppliers &amp; Lead Times
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/suppliers')}
+                className="text-xs font-medium text-[#081F62] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Suppliers <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+              {(suppliers || []).slice(0, 4).map((sup) => (
+                <div
+                  key={sup.id}
+                  onClick={() => navigate('/suppliers')}
+                  className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                      {sup.name}
+                    </p>
+                    <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                      {sup.category} · {sup.leadTimeDays}d lead time
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-semibold text-amber-600 tabular-nums">
+                      {sup.rating} ★
+                    </div>
+                    <StatusBadge status={sup.status || 'Active'} size="xs" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. Warehouse Finished Goods Stock */}
+          <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#081F62] dark:text-blue-400" />
+                Warehouse Finished Goods Stock
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/finished-goods')}
+                className="text-xs font-medium text-[#081F62] dark:text-blue-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+              >
+                Finished Goods <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
+              {(finishedGoods || []).slice(0, 4).map((fg) => {
+                const prod = products.find((p) => p.id === fg.productId);
+                return (
+                  <div
+                    key={fg.id}
+                    onClick={() => navigate('/finished-goods')}
+                    className="py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 -mx-1 px-1 rounded transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-[#051747] dark:text-slate-100 truncate">
+                        {prod?.name || fg.productId}
+                      </p>
+                      <p className="text-[11px] text-[#535F80] dark:text-slate-400">
+                        Batch: {fg.batchNumber} · Loc: {fg.storageLocation}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-semibold text-emerald-600 tabular-nums">
+                        {fg.acceptedQty} Nos
+                      </div>
+                      <StatusBadge status="Accepted" size="xs" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ===========================================================================
+  // RENDER: EXECUTIVE OVERVIEW DASHBOARD (ADMIN DEFAULT)
+  // ===========================================================================
   return (
     <div className="space-y-6">
       <PageHeader
         title="Dashboard"
-        description="Real-time local overview of production plans, raw material availability, company funds, pending billing, and customer deliveries."
+        description="Real-time plant overview of production plans, raw material availability, company funds, pending billing, and customer deliveries."
+        actions={perspectiveSwitcher}
       />
-      {/*
-        Commented header quick-action buttons:
-        <SecondaryButton size="sm" onClick={() => navigate('/production-planning')}>
-          Production Planning
-        </SecondaryButton>
-        <SecondaryButton size="sm" onClick={() => navigate('/reports')}>
-          View Reports
-        </SecondaryButton>
-      */}
 
-      {/* 4 Summary Cards */}
+      {/* 4 Executive Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Raw Material Stock"
@@ -254,14 +838,17 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* 3 Recharts Analytics Cards (3-column layout on desktop) */}
+      {/* 3 Executive Recharts Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ChartCard
           title="Production Overview"
           subtitle="Planned requirement vs actual & rejected units"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={productionOverviewData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+            <BarChart
+              data={productionOverviewData}
+              margin={{ top: 6, right: 6, left: 0, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
               <YAxis width={34} tick={{ fontSize: 10, fill: '#64748B' }} />
@@ -340,7 +927,10 @@ export function DashboardPage() {
           subtitle="Available unreserved stock, reserved & shortages"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={inventoryChartData} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
+            <BarChart
+              data={inventoryChartData}
+              margin={{ top: 6, right: 6, left: 0, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748B' }} />
               <YAxis width={36} tick={{ fontSize: 10, fill: '#64748B' }} />
@@ -358,42 +948,9 @@ export function DashboardPage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
-
-        {/* Order Status Distribution (Commented out)
-        <ChartCard
-          title="Order Status Distribution"
-          subtitle="Sales order lifecycle breakdown"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={orderStatusData}
-                cx="50%"
-                cy="50%"
-                innerRadius={38}
-                outerRadius={62}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {orderStatusData.map((entry) => (
-                  <Cell key={entry.name} fill={ORDER_COLORS[entry.name] || '#64748B'} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  fontSize: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #E2E8F0',
-                }}
-              />
-              <Legend wrapperStyle={{ fontSize: '11px' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-        */}
       </div>
 
-      {/* 6 Additional Operational Sections */}
+      {/* 6 Executive Operational Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* 1. Company Funds Remaining */}
         <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs flex flex-col">
@@ -561,7 +1118,9 @@ export function DashboardPage() {
           </div>
           <div className="divide-y divide-[#E7E9F0] dark:divide-slate-800 text-xs flex-1">
             {lowStockMaterials.length === 0 ? (
-              <p className="text-xs text-slate-500 py-4">All usable material stocks exceed reorder levels.</p>
+              <p className="text-xs text-slate-500 py-4">
+                All usable material stocks exceed reorder levels.
+              </p>
             ) : (
               lowStockMaterials.map((mat) => (
                 <div key={mat.id} className="py-2.5 flex items-center justify-between gap-2">

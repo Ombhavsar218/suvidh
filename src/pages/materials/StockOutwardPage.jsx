@@ -6,7 +6,7 @@ import {
   ClipboardList,
   Factory,
   Lock,
-  Minus,
+  Plus,
   Eye,
   Warehouse,
   AlertTriangle,
@@ -21,7 +21,6 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { Tooltip } from '../../components/common/Tooltip';
 import { Modal } from '../../components/common/Modal';
-import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
 import { useErpData } from '../../context/ErpDataContext';
 import { getMaterialComputedFields } from '../../services/erpService';
 import { formatNumber, formatDate } from '../../utils/formatters';
@@ -34,18 +33,9 @@ export function StockOutwardPage() {
     productionPlans = [],
     machines = [],
     products = [],
-    recordMaterialTransaction,
   } = useErpData();
 
-  const [outwardModalOpen, setOutwardModalOpen] = useState(false);
   const [detailModalTarget, setDetailModalTarget] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [form, setForm] = useState({
-    materialId: materials[0]?.id || '',
-    quantity: '',
-    reference: '',
-    remarks: '',
-  });
 
   const computedMaterials = useMemo(
     () => materials.map(getMaterialComputedFields),
@@ -86,64 +76,6 @@ export function StockOutwardPage() {
     initialSortDir: 'desc',
     searchFields: ['id', 'reference', 'remarks', 'performedBy'],
   });
-
-  const selectedMaterial = computedMaterials.find((m) => m.id === form.materialId);
-
-  const openOutwardModalWithPlan = (plan) => {
-    // Attempt to match BOM raw material for the product if available, else first material
-    const prod = products.find((p) => p.id === plan.productId);
-    const suggestedMat = materials[0];
-
-    setForm({
-      materialId: suggestedMat?.id || '',
-      quantity: String(plan.manufacturingRequirement || 50),
-      reference: `${plan.id} / ${plan.planNumber || 'WO'}`,
-      remarks: `Material issued for production run: ${prod?.name || plan.id}.`,
-    });
-    setErrorMsg('');
-    setOutwardModalOpen(true);
-  };
-
-  const handleOpenNewOutward = () => {
-    setForm({
-      materialId: materials[0]?.id || '',
-      quantity: '',
-      reference: `ISSUE-${Date.now().toString().slice(-4)}`,
-      remarks: '',
-    });
-    setErrorMsg('');
-    setOutwardModalOpen(true);
-  };
-
-  const handleSubmitOutward = (e) => {
-    e.preventDefault();
-    setErrorMsg('');
-
-    if (!form.materialId || !form.quantity || Number(form.quantity) <= 0) {
-      setErrorMsg('Please specify a valid issue quantity.');
-      return;
-    }
-
-    const qty = Number(form.quantity);
-    if (selectedMaterial && qty > selectedMaterial.usableStock) {
-      setErrorMsg(
-        `Cannot issue ${qty} ${selectedMaterial.uom}. Only ${selectedMaterial.usableStock} ${selectedMaterial.uom} approved usable stock is on hand.`
-      );
-      return;
-    }
-
-    const ok = recordMaterialTransaction({
-      materialId: form.materialId,
-      type: 'Outward',
-      quantity: -Math.abs(qty),
-      reference: form.reference,
-      remarks: form.remarks,
-    });
-
-    if (ok) {
-      setOutwardModalOpen(false);
-    }
-  };
 
   const columns = [
     {
@@ -263,8 +195,8 @@ export function StockOutwardPage() {
             </SecondaryButton>
             <PrimaryButton
               size="sm"
-              icon={Minus}
-              onClick={handleOpenNewOutward}
+              icon={Plus}
+              onClick={() => navigate('/stock-outward/new')}
             >
               Issue Material
             </PrimaryButton>
@@ -361,7 +293,7 @@ export function StockOutwardPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => openOutwardModalWithPlan(plan)}
+                      onClick={() => navigate(`/stock-outward/new?planId=${plan.id}`)}
                       className="px-2.5 py-1 text-xs font-semibold rounded bg-[#081F62] hover:bg-[#051747] text-[#FEFEFE] cursor-pointer inline-flex items-center gap-1 transition-colors"
                     >
                       <ArrowUpFromLine className="w-3 h-3" />
@@ -405,113 +337,6 @@ export function StockOutwardPage() {
           emptyMessage="No stock outward issuances found."
         />
       </div>
-
-      {/* Record Stock Outward Modal */}
-      <Modal
-        isOpen={outwardModalOpen}
-        onClose={() => setOutwardModalOpen(false)}
-        title="Issue Raw Material (Stock Outward)"
-        subtitle="Deduct approved material from warehouse inventory and issue to shop floor machine / work order."
-        size="lg"
-        footer={
-          <>
-            <SecondaryButton onClick={() => setOutwardModalOpen(false)}>
-              Cancel
-            </SecondaryButton>
-            <PrimaryButton onClick={handleSubmitOutward}>
-              Confirm &amp; Issue Material
-            </PrimaryButton>
-          </>
-        }
-      >
-        <form onSubmit={handleSubmitOutward} className="space-y-4">
-          {errorMsg && (
-            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          <FormSelect
-            label="Raw Material to Issue"
-            name="materialId"
-            required
-            value={form.materialId}
-            onChange={(e) => {
-              setForm({ ...form, materialId: e.target.value });
-              setErrorMsg('');
-            }}
-            options={computedMaterials.map((m) => ({
-              value: m.id,
-              label: `${m.code} — ${m.name} (Approved: ${formatNumber(m.usableStock)} ${m.uom} | Net Avail: ${formatNumber(m.availableQty)} ${m.uom})`,
-            }))}
-          />
-
-          {selectedMaterial && (
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 grid grid-cols-3 gap-2 text-xs text-center">
-              <div>
-                <span className="text-[#535F80] dark:text-slate-400 block font-medium">
-                  Approved Stock
-                </span>
-                <strong className="tabular-nums text-slate-800 dark:text-slate-200">
-                  {formatNumber(selectedMaterial.usableStock)} {selectedMaterial.uom}
-                </strong>
-              </div>
-              <div className="border-x border-slate-200 dark:border-slate-700">
-                <span className="text-[#535F80] dark:text-slate-400 block font-medium">
-                  Reserved for WO
-                </span>
-                <strong className="tabular-nums text-[#081F62] dark:text-blue-400">
-                  {formatNumber(selectedMaterial.reservedQty)} {selectedMaterial.uom}
-                </strong>
-              </div>
-              <div>
-                <span className="text-[#535F80] dark:text-slate-400 block font-medium">
-                  Net Available
-                </span>
-                <strong className="tabular-nums text-emerald-600">
-                  {formatNumber(selectedMaterial.availableQty)} {selectedMaterial.uom}
-                </strong>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormInput
-              label={`Issue Quantity (${selectedMaterial?.uom || 'Kg / Units'})`}
-              name="quantity"
-              type="number"
-              required
-              min="1"
-              max={selectedMaterial ? selectedMaterial.usableStock : undefined}
-              placeholder="e.g. 150"
-              value={form.quantity}
-              onChange={(e) => {
-                setForm({ ...form, quantity: e.target.value });
-                setErrorMsg('');
-              }}
-            />
-
-            <FormInput
-              label="Work Order / Plan # / Machine Ref"
-              name="reference"
-              required
-              placeholder="e.g. PLAN-2026-012 / MC-CNC-01"
-              value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            />
-          </div>
-
-          <FormTextarea
-            label="Outward Remarks / Destination"
-            name="remarks"
-            rows={2}
-            placeholder="e.g. Issued to Machine MC-CNC-01 for 4-Port Manifold production run."
-            value={form.remarks}
-            onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-          />
-        </form>
-      </Modal>
 
       {/* Transaction Audit Modal */}
       {detailModalTarget && (

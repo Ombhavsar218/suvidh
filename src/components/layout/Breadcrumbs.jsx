@@ -30,7 +30,16 @@ export function Breadcrumbs() {
         let label = ROUTE_LABELS[seg] || decodeURIComponent(seg);
         if (seg === 'new') {
           const prevSeg = index > 0 ? segments[index - 1] : '';
-          label = prevSeg === 'bom' ? 'New BOM' : prevSeg === 'products' ? 'New Product' : 'New Customer';
+          label =
+            prevSeg === 'bom'
+              ? 'New BOM'
+              : prevSeg === 'products'
+              ? 'New Product'
+              : prevSeg === 'stock-inward' || prevSeg === 'inward'
+              ? 'New GRN Entry'
+              : prevSeg === 'stock-outward' || prevSeg === 'outward'
+              ? 'Issue Raw Material'
+              : 'New Customer';
         } else if (seg === 'edit') {
           const parentSeg = index > 1 ? segments[index - 2] : '';
           label = parentSeg === 'bom' ? 'Edit BOM' : parentSeg === 'products' ? 'Edit Product' : 'Edit Customer';

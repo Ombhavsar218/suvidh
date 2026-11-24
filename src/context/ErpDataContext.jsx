@@ -408,6 +408,295 @@ export function ErpDataProvider({ children }) {
     [state.materials, addToast, currentUser]
   );
 
+  // --- Multi-Line GRN Receipt ---
+  const recordGrnReceipt = useCallback(
+    ({
+      grnNumber,
+      receiptDate,
+      poId,
+      poNumber,
+      supplierId,
+      supplierInvoice,
+      deliveryChallan,
+      vehicleNumber,
+      receivedBy,
+      remarks,
+      items = [],
+    }) => {
+      if (!items || items.length === 0) return false;
+
+      setState((prev) => {
+        let updatedMaterials = [...prev.materials];
+        let newTransactions = [];
+        let newQcInspections = [];
+
+        items.forEach((item, index) => {
+          const matIndex = updatedMaterials.findIndex((m) => m.id === item.materialId);
+          if (matIndex === -1) return;
+          const mat = updatedMaterials[matIndex];
+          const netQty = Number(item.netReceivedQty || item.receivedQty || 0);
+          const damagedQty = Number(item.damagedQty || 0);
+          const requireQc = item.requireQc !== false;
+
+          let updatedMat = { ...mat, lastUpdated: nowStamp() };
+          let txnStatus = 'Approved';
+
+          if (requireQc) {
+            updatedMat.pendingInspectionQty = (updatedMat.pendingInspectionQty || 0) + netQty;
+            if (damagedQty > 0) {
+              updatedMat.rejectedQty = (updatedMat.rejectedQty || 0) + damagedQty;
+            }
+            txnStatus = 'Pending Inspection';
+          } else {
+            updatedMat.approvedPhysicalQty = (updatedMat.approvedPhysicalQty || 0) + netQty;
+            if (damagedQty > 0) {
+              updatedMat.rejectedQty = (updatedMat.rejectedQty || 0) + damagedQty;
+            }
+            txnStatus = 'Approved';
+          }
+
+          if (item.location) {
+            updatedMat.location = item.location;
+          }
+
+          updatedMaterials[matIndex] = updatedMat;
+
+          const txnId = `TXN-${String(prev.materialTransactions.length + newTransactions.length + 1).padStart(3, '0')}`;
+          newTransactions.push({
+            id: txnId,
+            materialId: item.materialId,
+            type: 'Inward',
+            quantity: netQty,
+            status: txnStatus,
+            reference: `${grnNumber} / ${poNumber || deliveryChallan || supplierInvoice || 'Direct'}`,
+            remarks: [
+              remarks ? `Notes: ${remarks}` : '',
+              item.batchNumber ? `Heat/Batch: ${item.batchNumber}` : '',
+              item.location ? `Loc: ${item.location}` : '',
+              damagedQty > 0 ? `Damaged: ${damagedQty} ${item.uom}` : '',
+              supplierInvoice ? `Inv: ${supplierInvoice}` : '',
+              vehicleNumber ? `Vehicle: ${vehicleNumber}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'GRN Inward receipt.',
+            performedBy: receivedBy || `${currentUser.name} (${currentUser.role})`,
+            timestamp: `${receiptDate || todayDate()} ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`,
+            grnNumber,
+            batchNumber: item.batchNumber,
+            storageLocation: item.location,
+            warehouse: item.warehouse,
+          });
+
+          if (requireQc) {
+            const qcId = `QC-2026-${String(prev.qualityInspections.length + newQcInspections.length + 1).padStart(3, '0')}`;
+            newQcInspections.push({
+              id: qcId,
+              itemType: 'Raw Material',
+              itemId: mat.id,
+              itemName: mat.name,
+              batchNumber: item.batchNumber || `RM-LOT-${grnNumber}-${index + 1}`,
+              inspectionDate: receiptDate || todayDate(),
+              inspectedQty: netQty,
+              acceptedQty: 0,
+              rejectedQty: damagedQty,
+              uom: mat.uom,
+              inspector: 'Pending Assignment',
+              status: 'Pending',
+              reference: `${grnNumber} / ${poNumber || 'Direct'}`,
+              notes: `GRN Inward. Invoice: ${supplierInvoice || '—'}. Challan: ${deliveryChallan || '—'}. Location: ${item.location || '—'}`,
+            });
+          }
+        });
+
+        // Update PO if linked
+        let updatedPurchaseOrders = prev.purchaseOrders;
+        if (poId) {
+          updatedPurchaseOrders = prev.purchaseOrders.map((po) => {
+            if (po.id !== poId && po.poNumber !== poId) return po;
+            const updatedItems = (po.items || []).map((pItem) => {
+              const inwardLine = items.find((it) => it.materialId === pItem.materialId);
+              if (!inwardLine) return pItem;
+              const netQty = Number(inwardLine.netReceivedQty || inwardLine.receivedQty || 0);
+              return {
+                ...pItem,
+                receivedQty: (pItem.receivedQty || 0) + netQty,
+              };
+            });
+            const allReceived = updatedItems.every(
+              (it) => (it.receivedQty || 0) >= (it.orderedQty || 0)
+            );
+            const someReceived = updatedItems.some((it) => (it.receivedQty || 0) > 0);
+            const status = allReceived
+              ? 'Received'
+              : someReceived
+              ? 'Partially Received'
+              : po.status;
+
+            const newRecHistory = items.map((it, idx) => ({
+              id: `REC-${Date.now()}-${idx}`,
+              grnNumber,
+              receivedDate: `${receiptDate || todayDate()}`,
+              materialId: it.materialId,
+              receivedQty: Number(it.netReceivedQty || it.receivedQty || 0),
+              qcStatus: it.requireQc !== false ? 'Pending Inspection' : 'Accepted',
+              receivedBy: receivedBy || currentUser.name,
+            }));
+
+            return {
+              ...po,
+              status,
+              items: updatedItems,
+              receivingHistory: [...newRecHistory, ...(po.receivingHistory || [])],
+            };
+          });
+        }
+
+        return {
+          ...prev,
+          materials: updatedMaterials,
+          materialTransactions: [...newTransactions, ...prev.materialTransactions],
+          qualityInspections: [...newQcInspections, ...prev.qualityInspections],
+          purchaseOrders: updatedPurchaseOrders,
+        };
+      });
+
+      addToast({
+        title: 'GRN Receipt Created',
+        message: `${grnNumber} recorded with ${items.length} line item(s).`,
+        type: 'success',
+      });
+      return true;
+    },
+    [addToast, currentUser]
+  );
+
+  // --- Single / Multi-Field Stock Outward Issue ---
+  const recordStockOutward = useCallback(
+    ({
+      issueNumber,
+      issueDateTime,
+      issuedBy,
+      receivedBy,
+      warehouse,
+      planId,
+      planNumber,
+      workOrderNumber,
+      productId,
+      productName,
+      machineId,
+      machineName,
+      operation,
+      department,
+      materialId,
+      batchNumber,
+      storageLocation,
+      quantity,
+      woReservedQty = 0,
+      remarks,
+    }) => {
+      const issueQty = Number(quantity);
+      if (!materialId || Number.isNaN(issueQty) || issueQty <= 0) {
+        addToast({
+          title: 'Transaction Blocked',
+          message: 'Please provide a valid material and positive issue quantity.',
+          type: 'danger',
+        });
+        return false;
+      }
+
+      const currentMat = state.materials.find((m) => m.id === materialId);
+      if (!currentMat) {
+        addToast({
+          title: 'Transaction Blocked',
+          message: 'Selected raw material does not exist in inventory records.',
+          type: 'danger',
+        });
+        return false;
+      }
+
+      const netAvailableStock = Math.max(
+        0,
+        Number(currentMat.approvedPhysicalQty || 0) - Number(currentMat.reservedQty || 0)
+      );
+      const eligibleStock = netAvailableStock + Number(woReservedQty || 0);
+
+      if (issueQty > eligibleStock) {
+        addToast({
+          title: 'Transaction Blocked',
+          message: `Cannot issue ${issueQty} ${currentMat.uom}. Maximum eligible stock is ${eligibleStock} ${currentMat.uom} (${netAvailableStock} unreserved + ${woReservedQty} WO reservation).`,
+          type: 'danger',
+        });
+        return false;
+      }
+
+      setState((prev) => {
+        const matIndex = prev.materials.findIndex((m) => m.id === materialId);
+        if (matIndex === -1) return prev;
+        const mat = prev.materials[matIndex];
+
+        let updatedMat = { ...mat, lastUpdated: nowStamp() };
+        // Deduct physical approved stock
+        updatedMat.approvedPhysicalQty = Math.max(0, updatedMat.approvedPhysicalQty - issueQty);
+
+        // Deduct from reserved quantity only what was actually reserved for this Work Order
+        if (woReservedQty > 0) {
+          const consumedReservation = Math.min(issueQty, Number(woReservedQty));
+          updatedMat.reservedQty = Math.max(0, updatedMat.reservedQty - consumedReservation);
+        }
+
+        const newTxnId = `TXN-${String(prev.materialTransactions.length + 1).padStart(3, '0')}`;
+        const newTxn = {
+          id: newTxnId,
+          materialId,
+          type: 'Outward',
+          quantity: -Math.abs(issueQty),
+          status: 'Issued',
+          reference: `${issueNumber || 'ISSUE'} / ${workOrderNumber || planNumber || planId || 'Direct'}`,
+          remarks: [
+            remarks || '',
+            workOrderNumber ? `WO: ${workOrderNumber}` : planId ? `Plan: ${planId}` : '',
+            productName ? `Product: ${productName}` : '',
+            machineName ? `Machine: ${machineName}` : '',
+            operation ? `Op: ${operation}` : '',
+            department ? `Dept: ${department}` : '',
+            batchNumber ? `Batch/Heat: ${batchNumber}` : '',
+            storageLocation ? `Location: ${storageLocation}` : '',
+            warehouse ? `Warehouse: ${warehouse}` : '',
+            receivedBy ? `Receiver: ${receivedBy}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ') || 'Raw material issued to production.',
+          performedBy: issuedBy || `${currentUser.name} (${currentUser.role})`,
+          receivedBy: receivedBy || '',
+          timestamp: issueDateTime || nowStamp(),
+          issueNumber: issueNumber || newTxnId,
+          planId: planId || '',
+          workOrderNumber: workOrderNumber || '',
+          batchNumber: batchNumber || '',
+          warehouse: warehouse || '',
+          storageLocation: storageLocation || '',
+        };
+
+        const updatedMaterials = [...prev.materials];
+        updatedMaterials[matIndex] = updatedMat;
+
+        return {
+          ...prev,
+          materials: updatedMaterials,
+          materialTransactions: [newTxn, ...prev.materialTransactions],
+        };
+      });
+
+      addToast({
+        title: 'Material Issued (Stock Outward)',
+        message: `${issueNumber || 'Outward'}: Issued ${issueQty} ${currentMat.uom} to ${workOrderNumber || planNumber || 'Production'}.`,
+        type: 'success',
+      });
+      return true;
+    },
+    [state.materials, addToast, currentUser]
+  );
+
   // --- Machines ---
   const saveMachine = useCallback(
     (payload) => {
@@ -1142,6 +1431,8 @@ export function ErpDataProvider({ children }) {
         saveMaterial,
         deleteMaterial,
         recordMaterialTransaction,
+        recordGrnReceipt,
+        recordStockOutward,
         saveMachine,
         deleteMachine,
         addSchedulesBatch,

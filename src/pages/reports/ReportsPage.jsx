@@ -1,28 +1,31 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Download, Printer, FileBarChart } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DataTable } from '../../components/tables/DataTable';
 import { SearchInput, FilterDropdown, DateRangeFilter } from '../../components/forms/Filters';
+import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
 import { getMaterialComputedFields, getFinishedGoodComputedFields } from '../../services/erpService';
 import { exportToCsv, triggerPrint } from '../../services/exportService';
 import { formatCurrency, formatDate, formatNumber } from '../../utils/formatters';
 
 const REPORT_TYPES = [
-  { key: 'production', label: '1. Production Report' },
-  { key: 'machine-production', label: '2. Machine-wise Production Report' },
-  { key: 'raw-material-stock', label: '3. Raw Material Stock Report' },
-  { key: 'material-shortage', label: '4. Material Shortage Report' },
-  { key: 'purchase', label: '5. Purchase Report' },
-  { key: 'quality-inspection', label: '6. Quality Inspection Report' },
-  { key: 'rejection', label: '7. Rejection Report' },
-  { key: 'finished-goods', label: '8. Finished Goods Report' },
-  { key: 'sales', label: '9. Sales Report' },
-  { key: 'dispatch', label: '10. Dispatch Report' },
-  { key: 'pending-delivery', label: '11. Pending Delivery Report' },
+  { key: 'production', label: 'Production Report' },
+  { key: 'machine-production', label: 'Machine-wise Production Report' },
+  { key: 'raw-material-stock', label: 'Raw Material Stock Report' },
+  { key: 'material-shortage', label: 'Material Shortage Report' },
+  { key: 'purchase', label: 'Purchase Report' },
+  { key: 'quality-inspection', label: 'Quality Inspection Report' },
+  { key: 'rejection', label: 'Rejection Report' },
+  { key: 'finished-goods', label: 'Finished Goods Report' },
+  { key: 'sales', label: 'Sales Report' },
+  { key: 'dispatch', label: 'Dispatch Report' },
+  { key: 'pending-delivery', label: 'Pending Delivery Report' },
 ];
+
+const STORE_RESTRICTED_REPORT_KEYS = ['production', 'machine-production', 'sales'];
 
 export function ReportsPage() {
   const {
@@ -40,7 +43,30 @@ export function ReportsPage() {
     dispatches,
   } = useErpData();
 
-  const [reportKey, setReportKey] = useState('production');
+  const { activeRole } = useApp();
+
+  const availableReports = useMemo(() => {
+    if (activeRole === 'Store') {
+      return REPORT_TYPES.filter((rt) => !STORE_RESTRICTED_REPORT_KEYS.includes(rt.key));
+    }
+    return REPORT_TYPES;
+  }, [activeRole]);
+
+  const [reportKey, setReportKey] = useState(() =>
+    activeRole === 'Store' ? 'raw-material-stock' : 'production'
+  );
+
+  useEffect(() => {
+    if (activeRole === 'Store' && STORE_RESTRICTED_REPORT_KEYS.includes(reportKey)) {
+      setReportKey('raw-material-stock');
+    }
+  }, [activeRole, reportKey]);
+
+  const effectiveReportKey =
+    activeRole === 'Store' && STORE_RESTRICTED_REPORT_KEYS.includes(reportKey)
+      ? 'raw-material-stock'
+      : reportKey;
+
   const [search, setSearch] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -60,7 +86,7 @@ export function ReportsPage() {
       return true;
     };
 
-    switch (reportKey) {
+    switch (effectiveReportKey) {
       case 'production': {
         const rows = productionEntries
           .filter((e) => withinDate(e.productionDate))
@@ -419,7 +445,7 @@ export function ReportsPage() {
       }
     }
   }, [
-    reportKey,
+    effectiveReportKey,
     fromDate,
     toDate,
     customerFilter,
@@ -452,7 +478,7 @@ export function ReportsPage() {
     const dataRows = filteredRows.map((row) =>
       reportConfig.columns.map((c) => row[c.key] ?? '')
     );
-    exportToCsv(`Suvidh_${reportKey}_Report.csv`, headers, dataRows);
+    exportToCsv(`Suvidh_${effectiveReportKey}_Report.csv`, headers, dataRows);
   };
 
   return (
@@ -477,20 +503,20 @@ export function ReportsPage() {
         <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3 space-y-1 no-print">
           <div className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
             <FileBarChart className="w-3.5 h-3.5" />
-            Available Reports (11)
+            Available Reports ({availableReports.length})
           </div>
-          {REPORT_TYPES.map((rt) => (
+          {availableReports.map((rt, idx) => (
             <button
               key={rt.key}
               type="button"
               onClick={() => setReportKey(rt.key)}
               className={`w-full text-left px-3 py-2 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                reportKey === rt.key
-                  ? 'bg-blue-50 text-[#081F62] dark:bg-blue-950/60 dark:text-blue-400'
+                effectiveReportKey === rt.key
+                  ? 'bg-blue-50 text-[#081F62] dark:bg-blue-950/60 dark:text-blue-400 font-semibold'
                   : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
-              {rt.label}
+              {idx + 1}. {rt.label}
             </button>
           ))}
         </div>

@@ -40,8 +40,14 @@ const InventoryPage = lazy(() =>
 const StockInwardPage = lazy(() =>
   import('../pages/materials/StockInwardPage').then((m) => ({ default: m.StockInwardPage }))
 );
+const StockInwardFormPage = lazy(() =>
+  import('../pages/materials/StockInwardFormPage').then((m) => ({ default: m.StockInwardFormPage }))
+);
 const StockOutwardPage = lazy(() =>
   import('../pages/materials/StockOutwardPage').then((m) => ({ default: m.StockOutwardPage }))
+);
+const StockOutwardFormPage = lazy(() =>
+  import('../pages/materials/StockOutwardFormPage').then((m) => ({ default: m.StockOutwardFormPage }))
 );
 const MachinesPage = lazy(() =>
   import('../pages/machines/MachinesPage').then((m) => ({ default: m.MachinesPage }))
@@ -228,16 +234,32 @@ export function AppRoutes() {
           element={<RoleGate moduleKey="stock-inward"><StockInwardPage /></RoleGate>}
         />
         <Route
+          path="/stock-inward/new"
+          element={<RoleGate moduleKey="stock-inward"><StockInwardFormPage /></RoleGate>}
+        />
+        <Route
           path="/inventory/inward"
           element={<RoleGate moduleKey="stock-inward"><StockInwardPage /></RoleGate>}
+        />
+        <Route
+          path="/inventory/inward/new"
+          element={<RoleGate moduleKey="stock-inward"><StockInwardFormPage /></RoleGate>}
         />
         <Route
           path="/stock-outward"
           element={<RoleGate moduleKey="stock-outward"><StockOutwardPage /></RoleGate>}
         />
         <Route
+          path="/stock-outward/new"
+          element={<RoleGate moduleKey="stock-outward"><StockOutwardFormPage /></RoleGate>}
+        />
+        <Route
           path="/inventory/outward"
           element={<RoleGate moduleKey="stock-outward"><StockOutwardPage /></RoleGate>}
+        />
+        <Route
+          path="/inventory/outward/new"
+          element={<RoleGate moduleKey="stock-outward"><StockOutwardFormPage /></RoleGate>}
         />
         <Route
           path="/machines"

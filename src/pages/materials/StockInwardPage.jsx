@@ -9,7 +9,6 @@ import {
   Clock,
   Plus,
   Eye,
-  FileText,
   Warehouse,
   ShoppingBag,
 } from 'lucide-react';
@@ -17,12 +16,11 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { DataTable } from '../../components/tables/DataTable';
 import { useTableState } from '../../hooks/useTableState';
-import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
+import { SearchInput } from '../../components/forms/Filters';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { Tooltip } from '../../components/common/Tooltip';
 import { Modal } from '../../components/common/Modal';
-import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
 import { useErpData } from '../../context/ErpDataContext';
 import { getMaterialComputedFields } from '../../services/erpService';
 import { formatNumber, formatDate, formatCurrency, getDaysRemaining } from '../../utils/formatters';
@@ -30,22 +28,13 @@ import { formatNumber, formatDate, formatCurrency, getDaysRemaining } from '../.
 export function StockInwardPage() {
   const navigate = useNavigate();
   const {
-    materials,
+    materials = [],
     materialTransactions = [],
     purchaseOrders = [],
     suppliers = [],
-    recordMaterialTransaction,
   } = useErpData();
 
-  const [inwardModalOpen, setInwardModalOpen] = useState(false);
   const [detailModalTarget, setDetailModalTarget] = useState(null);
-  const [form, setForm] = useState({
-    materialId: materials[0]?.id || '',
-    quantity: '',
-    reference: '',
-    remarks: '',
-    requireQc: true,
-  });
 
   const computedMaterials = useMemo(
     () => materials.map(getMaterialComputedFields),
@@ -102,50 +91,6 @@ export function StockInwardPage() {
     initialSortDir: 'desc',
     searchFields: ['id', 'reference', 'remarks', 'performedBy'],
   });
-
-  const selectedMaterial = computedMaterials.find((m) => m.id === form.materialId);
-
-  const openInwardModalWithPO = (po, item) => {
-    const mat = materials.find((m) => m.id === item?.materialId) || materials[0];
-    const pendingQty = item ? Math.max(0, (item.orderedQty || 0) - (item.receivedQty || 0)) : '';
-    setForm({
-      materialId: mat?.id || '',
-      quantity: pendingQty ? String(pendingQty) : '',
-      reference: `${po.poNumber} / GRN-${Date.now().toString().slice(-4)}`,
-      remarks: `Gate receipt against PO ${po.poNumber}.`,
-      requireQc: true,
-    });
-    setInwardModalOpen(true);
-  };
-
-  const handleOpenNewInward = () => {
-    setForm({
-      materialId: materials[0]?.id || '',
-      quantity: '',
-      reference: `GRN-${Date.now().toString().slice(-4)}`,
-      remarks: '',
-      requireQc: true,
-    });
-    setInwardModalOpen(true);
-  };
-
-  const handleSubmitInward = (e) => {
-    e.preventDefault();
-    if (!form.materialId || !form.quantity || Number(form.quantity) <= 0) return;
-
-    const ok = recordMaterialTransaction({
-      materialId: form.materialId,
-      type: 'Inward',
-      quantity: Number(form.quantity),
-      reference: form.reference,
-      remarks: form.remarks,
-      requireQc: form.requireQc,
-    });
-
-    if (ok) {
-      setInwardModalOpen(false);
-    }
-  };
 
   const columns = [
     {
@@ -266,7 +211,7 @@ export function StockInwardPage() {
             <PrimaryButton
               size="sm"
               icon={Plus}
-              onClick={handleOpenNewInward}
+              onClick={() => navigate('/stock-inward/new')}
             >
               New Inward Receipt
             </PrimaryButton>
@@ -376,7 +321,7 @@ export function StockInwardPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => openInwardModalWithPO(po, firstItem)}
+                      onClick={() => navigate(`/stock-inward/new?poId=${po.id}`)}
                       className="px-2.5 py-1 text-xs font-semibold rounded bg-[#081F62] hover:bg-[#051747] text-[#FEFEFE] cursor-pointer inline-flex items-center gap-1 transition-colors"
                     >
                       <ArrowDownToLine className="w-3 h-3" />
@@ -420,116 +365,6 @@ export function StockInwardPage() {
           emptyMessage="No stock inward receipts found."
         />
       </div>
-
-      {/* Record Stock Inward Modal */}
-      <Modal
-        isOpen={inwardModalOpen}
-        onClose={() => setInwardModalOpen(false)}
-        title="Record Stock Inward (GRN Entry)"
-        subtitle="Log gate receipt of raw material, increment stock ledger, and optionally route to QC inspection."
-        size="lg"
-        footer={
-          <>
-            <SecondaryButton onClick={() => setInwardModalOpen(false)}>
-              Cancel
-            </SecondaryButton>
-            <PrimaryButton onClick={handleSubmitInward}>
-              Confirm &amp; Record Inward
-            </PrimaryButton>
-          </>
-        }
-      >
-        <form onSubmit={handleSubmitInward} className="space-y-4">
-          <FormSelect
-            label="Raw Material Grade / Item"
-            name="materialId"
-            required
-            value={form.materialId}
-            onChange={(e) => setForm({ ...form, materialId: e.target.value })}
-            options={computedMaterials.map((m) => ({
-              value: m.id,
-              label: `${m.code} — ${m.name} (In Store: ${formatNumber(m.totalPhysicalStock)} ${m.uom})`,
-            }))}
-          />
-
-          {selectedMaterial && (
-            <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 grid grid-cols-3 gap-2 text-xs text-center">
-              <div>
-                <span className="text-[#535F80] dark:text-slate-400 block font-medium">
-                  Physical Stock
-                </span>
-                <strong className="tabular-nums text-slate-800 dark:text-slate-200">
-                  {formatNumber(selectedMaterial.totalPhysicalStock)} {selectedMaterial.uom}
-                </strong>
-              </div>
-              <div className="border-x border-slate-200 dark:border-slate-700">
-                <span className="text-[#535F80] dark:text-slate-400 block font-medium">
-                  Pending QC
-                </span>
-                <strong className="tabular-nums text-amber-600">
-                  {formatNumber(selectedMaterial.pendingInspectionQty)} {selectedMaterial.uom}
-                </strong>
-              </div>
-              <div>
-                <span className="text-[#535F80] dark:text-slate-400 block font-medium">
-                  Net Available
-                </span>
-                <strong className="tabular-nums text-emerald-600">
-                  {formatNumber(selectedMaterial.availableQty)} {selectedMaterial.uom}
-                </strong>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormInput
-              label={`Received Quantity (${selectedMaterial?.uom || 'Kg / Units'})`}
-              name="quantity"
-              type="number"
-              required
-              min="1"
-              placeholder="e.g. 500"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            />
-
-            <FormInput
-              label="Reference (PO # / Vendor Invoice / GRN)"
-              name="reference"
-              required
-              placeholder="e.g. PO-2026-041 / GRN-902"
-              value={form.reference}
-              onChange={(e) => setForm({ ...form, reference: e.target.value })}
-            />
-          </div>
-
-          <label className="flex items-start gap-2.5 p-3 rounded-lg border border-amber-200 dark:border-amber-800/60 bg-amber-50/70 dark:bg-amber-950/30 text-xs cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.requireQc}
-              onChange={(e) => setForm({ ...form, requireQc: e.target.checked })}
-              className="mt-0.5 accent-[#051747]"
-            />
-            <div>
-              <div className="font-semibold text-amber-900 dark:text-amber-200">
-                Route Lot to Quality Inspection Queue (Quarantine Hold)
-              </div>
-              <div className="text-amber-700 dark:text-amber-300 mt-0.5">
-                Standard ISO procedure: Material is physically held in the receiving quarantine bay and cannot be issued to CNC lines until accepted by Quality Control.
-              </div>
-            </div>
-          </label>
-
-          <FormTextarea
-            label="Inward Remarks / Delivery Notes"
-            name="remarks"
-            rows={2}
-            placeholder="e.g. Received from Kalyani Specialty Steels with mill test certificate. Transferred to Bay 2."
-            value={form.remarks}
-            onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-          />
-        </form>
-      </Modal>
 
       {/* Transaction Audit Modal */}
       {detailModalTarget && (

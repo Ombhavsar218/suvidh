@@ -380,14 +380,12 @@ export function StockReservationPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
             <SecondaryButton
-              size="sm"
               icon={ArrowUpFromLine}
               onClick={() => navigate('/stock-outward/new')}
             >
               Issue Material
             </SecondaryButton>
             <PrimaryButton
-              size="sm"
               icon={Plus}
               onClick={() => navigate('/stock-reservation/new')}
             >

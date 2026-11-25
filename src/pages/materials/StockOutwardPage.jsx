@@ -187,14 +187,12 @@ export function StockOutwardPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
             <SecondaryButton
-              size="sm"
               icon={ClipboardList}
               onClick={() => navigate('/production-planning')}
             >
               Production Plans
             </SecondaryButton>
             <PrimaryButton
-              size="sm"
               icon={Plus}
               onClick={() => navigate('/stock-outward/new')}
             >

@@ -202,14 +202,12 @@ export function StockInwardPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2.5">
             <SecondaryButton
-              size="sm"
               icon={ShoppingBag}
               onClick={() => navigate('/purchases')}
             >
               Purchase Orders
             </SecondaryButton>
             <PrimaryButton
-              size="sm"
               icon={Plus}
               onClick={() => navigate('/stock-inward/new')}
             >

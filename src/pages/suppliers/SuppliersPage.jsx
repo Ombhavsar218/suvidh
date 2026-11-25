@@ -15,9 +15,15 @@ import {
   Mail,
   Phone,
   MapPin,
-  X,
-  Truck,
   ShoppingBag,
+  CheckCircle2,
+  AlertTriangle,
+  Globe,
+  CreditCard,
+  Receipt,
+  ExternalLink,
+  Power,
+  ShieldAlert,
 } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
@@ -30,57 +36,31 @@ import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { Pagination } from '../../components/common/Pagination';
 import { EmptyState } from '../../components/common/States';
-import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
 import { useErpData } from '../../context/ErpDataContext';
+import { useApp } from '../../context/AppContext';
 import { useTableState } from '../../hooks/useTableState';
-import { validateRequired, validateEmail } from '../../utils/validators';
-import { formatCurrency, formatNumber } from '../../utils/formatters';
-
-const CATEGORY_STYLES = {
-  'Alloy & Stainless Steel':
-    'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50',
-  'Grey Iron Castings':
-    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
-  'Aluminum & Bronze':
-    'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/50',
-  'Seals, O-Rings & Fasteners':
-    'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50',
-  'Hard Chrome Rods & Consumables':
-    'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/50',
-};
-
-function getSupplierInitials(name) {
-  if (!name) return 'SP';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-const EMPTY_FORM = {
-  code: '',
-  name: '',
-  contactPerson: '',
-  email: '',
-  phone: '',
-  address: '',
-  category: 'Alloy & Stainless Steel',
-  leadTimeDays: 5,
-  rating: 4.5,
-  status: 'Active',
-};
+import { formatCurrency, formatDate } from '../../utils/formatters';
+import {
+  SUPPLIER_TYPES,
+  SUPPLIER_CATEGORIES,
+  CATEGORY_STYLES,
+  TYPE_STYLES,
+  getSupplierInitials,
+  formatAddress,
+  computeSupplierPerformance,
+} from './supplierUtils';
 
 export function SuppliersPage() {
   const navigate = useNavigate();
+  const { addToast } = useApp();
   const {
     suppliers = [],
     purchaseOrders = [],
+    qualityInspections = [],
     saveSupplier,
     deleteSupplier,
   } = useErpData();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
   const [viewTarget, setViewTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
@@ -103,61 +83,104 @@ export function SuppliersPage() {
     return (total / suppliers.length).toFixed(1);
   }, [suppliers]);
 
-  const categories = useMemo(
-    () => Array.from(new Set(suppliers.map((s) => s.category).filter(Boolean))),
-    [suppliers]
-  );
+  // Dynamic filter lists
+  const availableTypes = useMemo(() => SUPPLIER_TYPES, []);
 
+  const availableCategories = useMemo(() => {
+    const set = new Set(SUPPLIER_CATEGORIES);
+    suppliers.forEach((s) => {
+      if (s.category) set.add(s.category);
+      if (Array.isArray(s.categories)) s.categories.forEach((c) => set.add(c));
+    });
+    return Array.from(set);
+  }, [suppliers]);
+
+  // Enhanced table state with multi-field search
   const table = useTableState(suppliers, {
     initialPageSize: 8,
     initialSortKey: 'name',
-    searchFields: ['code', 'name', 'contactPerson', 'category', 'email', 'phone', 'address'],
+    searchFields: [
+      'code',
+      'name',
+      'supplierType',
+      'contactPerson',
+      'category',
+      'email',
+      'phone',
+      'gstin',
+      'pan',
+      'address',
+    ],
   });
 
+  // Filter application
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter((s) => {
+      // Type filter
+      if (table.filters.supplierType && s.supplierType !== table.filters.supplierType) {
+        return false;
+      }
+      // Category filter
+      if (table.filters.category) {
+        const matchesCategory =
+          s.category === table.filters.category ||
+          (Array.isArray(s.categories) && s.categories.includes(table.filters.category));
+        if (!matchesCategory) return false;
+      }
+      // Status filter
+      if (table.filters.status && s.status !== table.filters.status) {
+        return false;
+      }
+      return true;
+    });
+  }, [suppliers, table.filters]);
+
   const hasActiveFilters = Boolean(
-    table.search || table.filters.category || table.filters.status
+    table.search ||
+      table.filters.category ||
+      table.filters.status ||
+      table.filters.supplierType
   );
 
+  // Navigate to Add Supplier Page
   const openAdd = () => {
-    setForm({
-      ...EMPTY_FORM,
-      code: `SUP-NEW-${String(suppliers.length + 1).padStart(2, '0')}`,
-    });
-    setErrors({});
-    setModalOpen(true);
+    navigate('/suppliers/new');
   };
 
+  // Navigate to Edit Supplier Page
   const openEdit = (sup, e) => {
     e?.stopPropagation();
-    setForm(sup);
-    setErrors({});
-    setModalOpen(true);
+    navigate(`/suppliers/${sup.id}/edit`);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    const nextErrors = {
-      code: validateRequired(form.code, 'Supplier code'),
-      name: validateRequired(form.name, 'Supplier name'),
-      contactPerson: validateRequired(form.contactPerson, 'Contact person'),
-      email: validateEmail(form.email),
-    };
-    const filtered = Object.fromEntries(
-      Object.entries(nextErrors).filter(([, v]) => Boolean(v))
-    );
-    if (Object.keys(filtered).length > 0) {
-      setErrors(filtered);
-      return;
-    }
-
+  // Toggle Active / Inactive Partner Status
+  const handleToggleStatus = (sup, e) => {
+    e?.stopPropagation();
+    const nextStatus = sup.status === 'Active' ? 'Inactive' : 'Active';
     saveSupplier({
-      ...form,
-      leadTimeDays: Number(form.leadTimeDays || 5),
-      rating: Number(form.rating || 4.5),
+      ...sup,
+      status: nextStatus,
     });
-    setModalOpen(false);
+    addToast({
+      title: `Supplier ${nextStatus}`,
+      message: `"${sup.name}" is now marked as ${nextStatus}.`,
+      type: nextStatus === 'Active' ? 'success' : 'info',
+    });
   };
 
+  // Delete Click: Check if referenced in POs or Transactions
+  const handleDeleteClick = (sup, e) => {
+    e?.stopPropagation();
+    setDeleteTarget(sup);
+  };
+
+  // Check if deleteTarget is protected by active references
+  const deleteTargetLinkedPos = useMemo(() => {
+    if (!deleteTarget) return [];
+    return purchaseOrders.filter((po) => po.supplierId === deleteTarget.id);
+  }, [deleteTarget, purchaseOrders]);
+
+  // Columns definition for DataTable
   const columns = [
     {
       key: 'code',
@@ -166,19 +189,26 @@ export function SuppliersPage() {
       width: '130px',
       cellClassName: 'whitespace-nowrap',
       render: (r) => (
-        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap inline-block">
+        <span className="font-mono text-xs font-semibold text-[#081F62] dark:text-blue-400 whitespace-nowrap inline-block">
           {r.code}
         </span>
       ),
     },
     {
       key: 'name',
-      label: 'Supplier Name & Category',
+      label: 'Supplier Name & Type',
       sortable: true,
       render: (r) => (
         <div>
           <div className="font-medium text-[#051747] dark:text-slate-100">{r.name}</div>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            <span
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                TYPE_STYLES[r.supplierType] || TYPE_STYLES.Other
+              }`}
+            >
+              {r.supplierType || 'Manufacturer'}
+            </span>
             <span
               className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold border ${
                 CATEGORY_STYLES[r.category] ||
@@ -187,6 +217,11 @@ export function SuppliersPage() {
             >
               {r.category}
             </span>
+            {Array.isArray(r.categories) && r.categories.length > 1 && (
+              <span className="text-[10px] text-slate-500 font-medium">
+                +{r.categories.length - 1} more
+              </span>
+            )}
           </div>
         </div>
       ),
@@ -231,7 +266,7 @@ export function SuppliersPage() {
     },
     {
       key: 'rating',
-      label: 'Rating',
+      label: 'Quality Rating',
       sortable: true,
       align: 'right',
       numeric: true,
@@ -244,7 +279,7 @@ export function SuppliersPage() {
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Partner Status',
       sortable: true,
       render: (r) => <StatusBadge status={r.status} />,
     },
@@ -257,7 +292,7 @@ export function SuppliersPage() {
           className="inline-flex items-center justify-start gap-1"
           onClick={(e) => e.stopPropagation()}
         >
-          <Tooltip content="Quick View Supplier">
+          <Tooltip content="View Supplier Profile">
             <button
               type="button"
               onClick={() => setViewTarget(r)}
@@ -277,10 +312,24 @@ export function SuppliersPage() {
               <Edit2 className="w-3.5 h-3.5" />
             </button>
           </Tooltip>
+          <Tooltip content={r.status === 'Active' ? 'Deactivate Partner' : 'Activate Partner'}>
+            <button
+              type="button"
+              onClick={(e) => handleToggleStatus(r, e)}
+              className={`p-1.5 rounded cursor-pointer transition-colors ${
+                r.status === 'Active'
+                  ? 'hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600'
+                  : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600'
+              }`}
+              aria-label={r.status === 'Active' ? 'Deactivate' : 'Activate'}
+            >
+              <Power className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
           <Tooltip content="Delete Supplier">
             <button
               type="button"
-              onClick={() => setDeleteTarget(r)}
+              onClick={(e) => handleDeleteClick(r, e)}
               className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
               aria-label="Delete Supplier"
             >
@@ -292,11 +341,16 @@ export function SuppliersPage() {
     },
   ];
 
+  // Calculated Performance for the ViewTarget Modal
+  const viewTargetPerformance = useMemo(() => {
+    return computeSupplierPerformance(viewTarget, purchaseOrders, qualityInspections);
+  }, [viewTarget, purchaseOrders, qualityInspections]);
+
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Suppliers & Vendors"
-        description="Approved raw material vendors, delivery lead times, supply categories, and performance ratings."
+        title="Suppliers &amp; Vendors"
+        description="Approved raw material manufacturers, distributors, dealers, tax credentials, payment terms, and procurement performance."
         actions={
           <div className="flex items-center gap-2">
             <SecondaryButton icon={ShoppingBag} onClick={() => navigate('/purchases')}>
@@ -349,14 +403,20 @@ export function SuppliersPage() {
           <SearchInput
             value={table.search}
             onChange={table.setSearch}
-            placeholder="Search supplier code, name, category, contact, email, address..."
-            className="w-full sm:w-96 md:w-[420px] lg:w-[480px]"
+            placeholder="Search supplier code, name, type, contact person, email, GSTIN, PAN..."
+            className="w-full sm:w-80 md:w-[380px]"
+          />
+          <FilterDropdown
+            label="Supplier Type"
+            value={table.filters.supplierType}
+            onChange={(val) => table.setFilter('supplierType', val)}
+            options={availableTypes}
           />
           <FilterDropdown
             label="Category"
             value={table.filters.category}
             onChange={(val) => table.setFilter('category', val)}
-            options={categories}
+            options={availableCategories}
           />
           <FilterDropdown
             label="Status"
@@ -378,7 +438,7 @@ export function SuppliersPage() {
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-[#535F80] dark:text-slate-400 hidden sm:inline">
-            Showing <strong className="text-[#051747] dark:text-slate-200">{table.totalItems}</strong> supplier{table.totalItems === 1 ? '' : 's'}
+            Showing <strong className="text-[#051747] dark:text-slate-200">{filteredSuppliers.length}</strong> supplier{filteredSuppliers.length === 1 ? '' : 's'}
           </span>
           <div className="inline-flex items-center rounded-lg border border-[#535F80]/25 dark:border-slate-800 p-0.5 bg-[#FEFEFE] dark:bg-slate-900">
             <Tooltip content="Table View">
@@ -438,7 +498,7 @@ export function SuppliersPage() {
           <div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {table.paginatedData.map((sup) => {
-                const linkedPos = purchaseOrders.filter((po) => po.supplierId === sup.id);
+                const perf = computeSupplierPerformance(sup, purchaseOrders, qualityInspections);
 
                 return (
                   <div
@@ -456,7 +516,7 @@ export function SuppliersPage() {
                             <h3 className="font-semibold text-sm text-[#051747] dark:text-slate-100 group-hover:text-[#081F62] transition-colors leading-tight line-clamp-1">
                               {sup.name}
                             </h3>
-                            <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap inline-block mt-0.5">
+                            <span className="font-mono text-xs font-semibold text-[#081F62] dark:text-blue-400 whitespace-nowrap inline-block mt-0.5">
                               {sup.code}
                             </span>
                           </div>
@@ -464,8 +524,15 @@ export function SuppliersPage() {
                         <StatusBadge status={sup.status} />
                       </div>
 
-                      {/* Category Badge */}
-                      <div className="mb-3">
+                      {/* Type & Category Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                            TYPE_STYLES[sup.supplierType] || TYPE_STYLES.Other
+                          }`}
+                        >
+                          {sup.supplierType || 'Manufacturer'}
+                        </span>
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
                             CATEGORY_STYLES[sup.category] ||
@@ -522,7 +589,7 @@ export function SuppliersPage() {
                             Purchase Orders
                           </div>
                           <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums mt-0.5">
-                            {linkedPos.length}
+                            {perf?.totalPurchaseOrders || 0}
                           </div>
                         </div>
                       </div>
@@ -536,10 +603,24 @@ export function SuppliersPage() {
                         className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#081F62] hover:text-[#051747] dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        Quick View
+                        View Profile
                       </button>
 
                       <div className="flex items-center gap-1">
+                        <Tooltip content={sup.status === 'Active' ? 'Deactivate Partner' : 'Activate Partner'}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleStatus(sup, e)}
+                            className={`p-1.5 rounded cursor-pointer transition-colors ${
+                              sup.status === 'Active'
+                                ? 'hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-600'
+                                : 'hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-600'
+                            }`}
+                            aria-label={sup.status === 'Active' ? 'Deactivate' : 'Activate'}
+                          >
+                            <Power className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
                         <Tooltip content="Edit Supplier">
                           <button
                             type="button"
@@ -553,7 +634,7 @@ export function SuppliersPage() {
                         <Tooltip content="Delete Supplier">
                           <button
                             type="button"
-                            onClick={() => setDeleteTarget(sup)}
+                            onClick={(e) => handleDeleteClick(sup, e)}
                             className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
                             aria-label="Delete Supplier"
                           >
@@ -597,13 +678,15 @@ export function SuppliersPage() {
         />
       )}
 
-      {/* Quick View Modal */}
+      {/* ============================================================== */}
+      {/* QUICK VIEW / SUPPLIER DETAILS MODAL                           */}
+      {/* ============================================================== */}
       {viewTarget && (
         <Modal
           isOpen={Boolean(viewTarget)}
           onClose={() => setViewTarget(null)}
-          title="Supplier Profile & Details"
-          size="lg"
+          title="Supplier Profile &amp; Business Information"
+          size="xl"
           footer={
             <div className="flex items-center justify-between w-full">
               <SecondaryButton onClick={() => setViewTarget(null)}>
@@ -644,9 +727,16 @@ export function SuppliersPage() {
                   <h3 className="font-bold text-base text-[#051747] dark:text-slate-100">
                     {viewTarget.name}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-[#081F62] dark:text-blue-300">
                       {viewTarget.code}
+                    </span>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
+                        TYPE_STYLES[viewTarget.supplierType] || TYPE_STYLES.Other
+                      }`}
+                    >
+                      {viewTarget.supplierType || 'Manufacturer'}
                     </span>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
@@ -656,52 +746,183 @@ export function SuppliersPage() {
                     >
                       {viewTarget.category}
                     </span>
+                    {Array.isArray(viewTarget.categories) &&
+                      viewTarget.categories
+                        .filter((c) => c !== viewTarget.category)
+                        .map((c) => (
+                          <span
+                            key={c}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                          >
+                            {c}
+                          </span>
+                        ))}
                   </div>
                 </div>
               </div>
               <StatusBadge status={viewTarget.status} />
             </div>
 
-            {/* Contact Person & Address */}
+            {/* Performance Metrics Cards */}
+            <div>
+              <span className="text-xs font-semibold text-[#535F80] dark:text-slate-400 block uppercase tracking-wider mb-2">
+                Procurement Performance (Calculated from Records)
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-center">
+                  <span className="text-[10px] text-slate-500 font-medium block">Total Purchase Orders</span>
+                  <strong className="text-sm font-bold text-[#051747] dark:text-slate-200 tabular-nums">
+                    {viewTargetPerformance?.totalPurchaseOrders || 0}
+                  </strong>
+                </div>
+                <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-center">
+                  <span className="text-[10px] text-slate-500 font-medium block">Total Purchase Value</span>
+                  <strong className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                    {formatCurrency(viewTargetPerformance?.totalPurchaseValue || 0)}
+                  </strong>
+                </div>
+                <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-center">
+                  <span className="text-[10px] text-slate-500 font-medium block">Last Purchase Date</span>
+                  <strong className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    {viewTargetPerformance?.lastPurchaseDate || 'No Data'}
+                  </strong>
+                </div>
+                <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-center">
+                  <span className="text-[10px] text-slate-500 font-medium block">Delivery Performance</span>
+                  <strong className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                    {viewTargetPerformance?.deliveryPerformance || 'No Data'}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Person & Tax Information */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2">
+              <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2 text-xs">
                 <span className="text-xs font-semibold text-[#535F80] dark:text-slate-400 block uppercase tracking-wider">
                   Contact Information
                 </span>
-                <div className="text-sm font-medium text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                  <User className="w-4 h-4 text-[#081F62]" />
+                <div className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-[#081F62]" />
                   <span>{viewTarget.contactPerson}</span>
+                  <span className="text-[10px] font-normal text-slate-400">(Primary)</span>
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-[#535F80]" />
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <Phone className="w-3.5 h-3.5 text-[#535F80]" />
+                  <span className="tabular-nums font-mono">{viewTarget.phone}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                  <Mail className="w-3.5 h-3.5 text-[#535F80]" />
                   <span className="font-mono">{viewTarget.email}</span>
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#535F80]" />
-                  <span className="tabular-nums">{viewTarget.phone}</span>
-                </div>
+
+                {viewTarget.alternateContactPerson && (
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] text-slate-400 block font-medium">Alternate Contact</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{viewTarget.alternateContactPerson}</span>
+                    {viewTarget.alternatePhone && (
+                      <span className="text-slate-500 block font-mono mt-0.5">{viewTarget.alternatePhone}</span>
+                    )}
+                  </div>
+                )}
+
+                {viewTarget.accountsEmail && (
+                  <div className="pt-1 text-[11px] text-slate-500">
+                    <span>Accounts / Billing Email: </span>
+                    <strong className="font-mono text-slate-700 dark:text-slate-300">{viewTarget.accountsEmail}</strong>
+                  </div>
+                )}
               </div>
 
-              <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2">
+              {/* Tax & Commercial Info */}
+              <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2 text-xs">
                 <span className="text-xs font-semibold text-[#535F80] dark:text-slate-400 block uppercase tracking-wider">
-                  Plant & Office Location
+                  Tax &amp; Commercial Terms
                 </span>
-                <div className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2 leading-relaxed">
-                  <MapPin className="w-4 h-4 text-[#081F62] shrink-0 mt-0.5" />
-                  <span>{viewTarget.address || 'Address not registered'}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">GSTIN:</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    {viewTarget.gstin || 'Not Provided'}
+                  </span>
                 </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-[#535F80]">Standard Lead Time:</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">PAN Number:</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    {viewTarget.pan || 'Not Provided'}
+                  </span>
+                </div>
+                {viewTarget.website && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-500">Website:</span>
+                    <a
+                      href={viewTarget.website.startsWith('http') ? viewTarget.website : `https://${viewTarget.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#081F62] dark:text-blue-400 hover:underline flex items-center gap-1 font-mono text-[11px]"
+                    >
+                      <span>{viewTarget.website}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <span className="text-slate-500">Payment Terms:</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {viewTarget.leadTimeDays} days
+                    {viewTarget.paymentTerms === 'Custom'
+                      ? `Custom (${viewTarget.customPaymentDays || 30} Days)`
+                      : viewTarget.paymentTerms || 'Net 30 Days'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#535F80]">Vendor Score:</span>
-                  <span className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                    <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    {viewTarget.rating?.toFixed(1) || '4.0'} / 5.0
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Credit Limit:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {viewTarget.creditLimit ? formatCurrency(viewTarget.creditLimit) : 'No Limit / Not Set'}
                   </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Lead Time &amp; MOQ:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {viewTarget.leadTimeDays} days {viewTarget.moq ? `· MOQ: ${viewTarget.moq} units` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Transport:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {viewTarget.transportResponsibility || 'Supplier'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Addresses Display */}
+            <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 text-xs space-y-3">
+              <span className="text-xs font-semibold text-[#535F80] dark:text-slate-400 block uppercase tracking-wider">
+                Facility &amp; Logistic Locations
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    🏭 Plant / Facility Address
+                  </span>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    {formatAddress(viewTarget.plantAddress) || viewTarget.address || 'Not registered'}
+                  </p>
+                </div>
+                <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    📑 Billing Address
+                  </span>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    {formatAddress(viewTarget.billingAddress) || 'Same as plant address'}
+                  </p>
+                </div>
+                <div className="p-2.5 rounded bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    🚚 Shipping / Pickup Address
+                  </span>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                    {formatAddress(viewTarget.shippingAddress) || 'Same as plant address'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -709,38 +930,36 @@ export function SuppliersPage() {
             {/* Linked Purchase Orders Summary */}
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-[#051747] dark:text-slate-200 mb-2.5">
-                Procurement History & Orders
+                Procurement History &amp; Orders ({viewTargetPerformance?.linkedPos?.length || 0})
               </h4>
-              {purchaseOrders.filter((po) => po.supplierId === viewTarget.id).length === 0 ? (
+              {!viewTargetPerformance?.linkedPos || viewTargetPerformance.linkedPos.length === 0 ? (
                 <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-xs text-center text-slate-500">
                   No purchase orders recorded with this supplier yet.
                 </div>
               ) : (
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {purchaseOrders
-                    .filter((po) => po.supplierId === viewTarget.id)
-                    .map((po) => (
-                      <div
-                        key={po.id}
-                        className="p-2.5 rounded-lg border border-[#535F80]/15 dark:border-slate-800 flex items-center justify-between text-xs bg-[#FEFEFE] dark:bg-slate-900"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                            {po.poNumber}
-                          </span>
-                          <span className="text-slate-500">{po.orderDate}</span>
-                          <span className="text-slate-600 dark:text-slate-300">
-                            ({po.items?.length || 0} line items)
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-[#051747] dark:text-slate-200">
-                            {formatCurrency(po.totalAmount)}
-                          </span>
-                          <StatusBadge status={po.status} />
-                        </div>
+                  {viewTargetPerformance.linkedPos.map((po) => (
+                    <div
+                      key={po.id}
+                      className="p-2.5 rounded-lg border border-[#535F80]/15 dark:border-slate-800 flex items-center justify-between text-xs bg-[#FEFEFE] dark:bg-slate-900"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                          {po.poNumber}
+                        </span>
+                        <span className="text-slate-500">{po.orderDate}</span>
+                        <span className="text-slate-600 dark:text-slate-300">
+                          ({po.items?.length || 0} line items)
+                        </span>
                       </div>
-                    ))}
+                      <div className="flex items-center gap-3">
+                        <span className="font-semibold text-[#051747] dark:text-slate-200">
+                          {formatCurrency(po.totalAmount)}
+                        </span>
+                        <StatusBadge status={po.status} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -748,126 +967,65 @@ export function SuppliersPage() {
         </Modal>
       )}
 
-      {/* Add / Edit Supplier Modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={form.id ? 'Edit Supplier' : 'Add Supplier'}
-        size="lg"
-        footer={
-          <>
-            <SecondaryButton onClick={() => setModalOpen(false)}>Cancel</SecondaryButton>
-            <PrimaryButton onClick={handleSave}>Save Supplier</PrimaryButton>
-          </>
-        }
-      >
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormInput
-              label="Supplier Code"
-              name="code"
-              required
-              value={form.code}
-              onChange={(e) => setForm({ ...form, code: e.target.value })}
-              error={errors.code}
-            />
-            <FormInput
-              label="Supplier Name"
-              name="name"
-              required
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              error={errors.name}
-            />
-            <FormSelect
-              label="Supply Category"
-              name="category"
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              options={[
-                'Alloy & Stainless Steel',
-                'Grey Iron Castings',
-                'Aluminum & Bronze',
-                'Seals, O-Rings & Fasteners',
-                'Hard Chrome Rods & Consumables',
-              ]}
-            />
-            <FormSelect
-              label="Partner Status"
-              name="status"
-              value={form.status}
-              onChange={(e) => setForm({ ...form, status: e.target.value })}
-              options={['Active', 'Inactive']}
-            />
-            <FormInput
-              label="Contact Person"
-              name="contactPerson"
-              required
-              value={form.contactPerson}
-              onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
-              error={errors.contactPerson}
-            />
-            <FormInput
-              label="Email Address"
-              name="email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              error={errors.email}
-            />
-            <FormInput
-              label="Phone Number"
-              name="phone"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-            <FormInput
-              label="Standard Lead Time (Days)"
-              name="leadTimeDays"
-              type="number"
-              min="1"
-              value={form.leadTimeDays}
-              onChange={(e) => setForm({ ...form, leadTimeDays: e.target.value })}
-            />
-            <FormInput
-              label="Quality Rating (0 - 5.0)"
-              name="rating"
-              type="number"
-              step="0.1"
-              min="0"
-              max="5"
-              value={form.rating}
-              onChange={(e) => setForm({ ...form, rating: e.target.value })}
-            />
-          </div>
-
-          <FormTextarea
-            label="Plant / Facility Address"
-            name="address"
-            rows={2}
-            value={form.address}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="e.g. MIDC Chakan Phase I, Pune 410501"
+      {/* Protective Dialog: Delete Supplier */}
+      {deleteTarget && (
+        deleteTargetLinkedPos.length > 0 ? (
+          <Modal
+            isOpen={Boolean(deleteTarget)}
+            onClose={() => setDeleteTarget(null)}
+            title="Cannot Delete Supplier Partner"
+            size="sm"
+            footer={
+              <div className="flex items-center justify-end gap-2 w-full">
+                <SecondaryButton onClick={() => setDeleteTarget(null)}>
+                  Keep Active
+                </SecondaryButton>
+                <PrimaryButton
+                  variant="primary"
+                  onClick={() => {
+                    handleToggleStatus(deleteTarget);
+                    setDeleteTarget(null);
+                  }}
+                >
+                  Deactivate Supplier Instead
+                </PrimaryButton>
+              </div>
+            }
+          >
+            <div className="space-y-3 text-xs">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200">
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-semibold">Active Procurement Records Exist</strong>
+                  <span>
+                    Supplier <strong>"{deleteTarget.name}" ({deleteTarget.code})</strong> is referenced by{' '}
+                    <strong>{deleteTargetLinkedPos.length} purchase order(s)</strong> and inventory receipts.
+                  </span>
+                </div>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Permanent deletion is blocked to preserve manufacturing ledger integrity. You can deactivate this supplier so they no longer appear in new purchase order selections.
+              </p>
+            </div>
+          </Modal>
+        ) : (
+          <ConfirmationDialog
+            isOpen={Boolean(deleteTarget)}
+            onClose={() => setDeleteTarget(null)}
+            onConfirm={() => {
+              if (deleteTarget) {
+                deleteSupplier(deleteTarget.id);
+                setDeleteTarget(null);
+              }
+            }}
+            title="Delete Supplier"
+            message={`Are you sure you want to permanently delete supplier "${deleteTarget?.code}" (${deleteTarget?.name})? This will remove the vendor from your records.`}
+            confirmLabel="Delete Supplier"
+            cancelLabel="Keep Supplier"
+            variant="danger"
           />
-        </form>
-      </Modal>
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) {
-            deleteSupplier(deleteTarget.id);
-            setDeleteTarget(null);
-          }
-        }}
-        title="Delete Supplier"
-        message={`Are you sure you want to delete supplier "${deleteTarget?.code}" (${deleteTarget?.name})? This will remove the vendor from your local records.`}
-        confirmLabel="Delete Supplier"
-        cancelLabel="Keep Supplier"
-        variant="danger"
-      />
+        )
+      )}
     </div>
   );
 }

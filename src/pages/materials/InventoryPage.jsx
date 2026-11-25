@@ -5,6 +5,7 @@ import {
   ArrowUpFromLine,
   SlidersHorizontal,
   Lock,
+  BookmarkCheck,
   ShieldAlert,
   History,
   Boxes,
@@ -317,10 +318,10 @@ export function InventoryPage() {
               <ArrowDownToLine className="w-3.5 h-3.5" />
             </button>
           </Tooltip>
-          <Tooltip content="Reserve for Production">
+          <Tooltip content="Record Stock Reservation">
             <button
               type="button"
-              onClick={() => openTxnModal('Reservation', r.id)}
+              onClick={() => navigate(`/stock-reservation/new?materialId=${r.id}`)}
               className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[#081F62] dark:text-blue-400 cursor-pointer"
               aria-label="Reserve Material"
             >
@@ -442,16 +443,19 @@ export function InventoryPage() {
         description="Monitor physical stock distribution, quality approval holds, production reservations, and ledger movements."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <SecondaryButton icon={ArrowDownToLine} onClick={() => openTxnModal('Inward')}>
+            <SecondaryButton icon={ArrowDownToLine} onClick={() => navigate('/stock-inward')}>
               Stock Inward
             </SecondaryButton>
-            <SecondaryButton icon={ArrowUpFromLine} onClick={() => openTxnModal('Outward')}>
+            <SecondaryButton icon={ArrowUpFromLine} onClick={() => navigate('/stock-outward')}>
               Stock Outward
             </SecondaryButton>
+            {/* <SecondaryButton icon={BookmarkCheck} onClick={() => navigate('/stock-reservation')}>
+              Stock Reservations
+            </SecondaryButton> */}
             <SecondaryButton icon={SlidersHorizontal} onClick={() => openTxnModal('Adjustment')}>
               Adjustment
             </SecondaryButton>
-            <PrimaryButton icon={Lock} onClick={() => openTxnModal('Reservation')}>
+            <PrimaryButton icon={Lock} onClick={() => navigate('/stock-reservation/new')}>
               Reserve Material
             </PrimaryButton>
           </div>
@@ -758,10 +762,10 @@ export function InventoryPage() {
                                 <ArrowDownToLine className="w-3.5 h-3.5" />
                               </button>
                             </Tooltip>
-                            <Tooltip content="Reserve for Production">
+                            <Tooltip content="Record Stock Reservation">
                               <button
                                 type="button"
-                                onClick={() => openTxnModal('Reservation', mat.id)}
+                                onClick={() => navigate(`/stock-reservation/new?materialId=${mat.id}`)}
                                 className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[#081F62] dark:text-blue-400 cursor-pointer"
                                 aria-label="Reserve Material"
                               >

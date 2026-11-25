@@ -2,12 +2,19 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { storageService } from '../services/storageService';
 import { generateId } from '../utils/formatters';
 import { useApp } from './AppContext';
+import { initialStockReservations } from '../data/reservationsData';
 
 const ErpDataContext = createContext(null);
 
 export function ErpDataProvider({ children }) {
   const { addToast, currentUser } = useApp();
-  const [state, setState] = useState(() => storageService.loadState());
+  const [state, setState] = useState(() => {
+    const loaded = storageService.loadState();
+    if (!loaded.stockReservations || !Array.isArray(loaded.stockReservations) || loaded.stockReservations.length === 0) {
+      loaded.stockReservations = initialStockReservations;
+    }
+    return loaded;
+  });
 
   useEffect(() => {
     storageService.saveState(state);
@@ -218,19 +225,49 @@ export function ErpDataProvider({ children }) {
 
   const deleteSupplier = useCallback(
     (supplierId) => {
+      let isBlocked = false;
+      let targetName = 'Supplier';
+
       setState((prev) => {
         const target = prev.suppliers.find((s) => s.id === supplierId);
-        const name = target?.name || 'Supplier';
+        targetName = target?.name || 'Supplier';
+
+        // Check if supplier is referenced by purchase orders
+        const isReferencedInPo = prev.purchaseOrders.some((po) => po.supplierId === supplierId);
+        // Check if supplier is referenced in material transactions
+        const isReferencedInTxn = prev.materialTransactions.some(
+          (t) =>
+            t.reference &&
+            target &&
+            (t.reference.includes(target.name) || t.reference.includes(target.code))
+        );
+
+        if (isReferencedInPo || isReferencedInTxn) {
+          isBlocked = true;
+          return prev;
+        }
+
         return {
           ...prev,
           suppliers: prev.suppliers.filter((s) => s.id !== supplierId),
         };
       });
+
+      if (isBlocked) {
+        addToast({
+          title: 'Cannot Delete Supplier',
+          message: `"${targetName}" is referenced by active purchase orders or inventory transactions. Deactivate the vendor instead to preserve audit history.`,
+          type: 'danger',
+        });
+        return false;
+      }
+
       addToast({
         title: 'Supplier Deleted',
-        message: 'Supplier was removed from LocalStorage.',
+        message: `Supplier "${targetName}" was removed from records.`,
         type: 'info',
       });
+      return true;
     },
     [addToast]
   );
@@ -265,19 +302,58 @@ export function ErpDataProvider({ children }) {
 
   const deleteMaterial = useCallback(
     (materialId) => {
+      let isBlocked = false;
+      let targetName = 'Material';
+
       setState((prev) => {
         const target = prev.materials.find((m) => m.id === materialId);
-        const name = target?.name || 'Material';
+        targetName = target?.name || 'Material';
+
+        // Check if material is referenced by purchase orders
+        const isReferencedInPo = prev.purchaseOrders.some(
+          (po) =>
+            po.materialId === materialId ||
+            po.items?.some((i) => i.materialId === materialId)
+        );
+        // Check if material is referenced in material transactions
+        const isReferencedInTxn = prev.materialTransactions.some(
+          (t) => t.materialId === materialId
+        );
+        // Check if material is referenced in BOMs
+        const isReferencedInBom = prev.boms.some((b) =>
+          b.items?.some((item) => item.materialId === materialId)
+        );
+        // Check if material has physical or reserved inventory
+        const hasStock =
+          (target?.approvedPhysicalQty || 0) > 0 ||
+          (target?.reservedQty || 0) > 0;
+
+        if (isReferencedInPo || isReferencedInTxn || isReferencedInBom || hasStock) {
+          isBlocked = true;
+          return prev;
+        }
+
         return {
           ...prev,
           materials: prev.materials.filter((m) => m.id !== materialId),
         };
       });
+
+      if (isBlocked) {
+        addToast({
+          title: 'Deletion Blocked',
+          message: `Cannot delete "${targetName}" because it is linked to active purchase orders, inventory transactions, or BOM recipes. Please deactivate instead.`,
+          type: 'danger',
+        });
+        return false;
+      }
+
       addToast({
         title: 'Material Deleted',
-        message: 'Raw material was removed from LocalStorage.',
+        message: 'Raw material was removed from master catalog.',
         type: 'info',
       });
+      return true;
     },
     [addToast]
   );
@@ -680,10 +756,46 @@ export function ErpDataProvider({ children }) {
         const updatedMaterials = [...prev.materials];
         updatedMaterials[matIndex] = updatedMat;
 
+        let updatedReservations = prev.stockReservations || initialStockReservations;
+        if (workOrderNumber || planId || planNumber) {
+          let remainingToDeduct = issueQty;
+          updatedReservations = updatedReservations.map((res) => {
+            if (
+              remainingToDeduct > 0 &&
+              (res.status === 'Active' || res.status === 'Partially Consumed') &&
+              res.materialId === materialId &&
+              ((workOrderNumber && res.workOrderNumber === workOrderNumber) ||
+                (planId && (res.planId === planId || res.productionPlanNumber === planId)) ||
+                (planNumber && res.productionPlanNumber === planNumber))
+            ) {
+              const resRemaining = Math.max(0, res.reservedQuantity - (res.consumedQuantity || 0));
+              const consumeFromThis = Math.min(remainingToDeduct, resRemaining);
+              if (consumeFromThis > 0) {
+                remainingToDeduct -= consumeFromThis;
+                const newConsumed = (res.consumedQuantity || 0) + consumeFromThis;
+                const newStatus = newConsumed >= res.reservedQuantity ? 'Released' : 'Partially Consumed';
+                return {
+                  ...res,
+                  consumedQuantity: newConsumed,
+                  remainingQuantity: Math.max(0, res.reservedQuantity - newConsumed),
+                  status: newStatus,
+                  lastUpdated: nowStamp(),
+                  statusNote:
+                    newStatus === 'Released'
+                      ? `Fully consumed via Outward ${issueNumber || newTxnId}`
+                      : `Partially consumed (${consumeFromThis} ${res.unit}) via Outward ${issueNumber || newTxnId}`,
+                };
+              }
+            }
+            return res;
+          });
+        }
+
         return {
           ...prev,
           materials: updatedMaterials,
           materialTransactions: [newTxn, ...prev.materialTransactions],
+          stockReservations: updatedReservations,
         };
       });
 
@@ -695,6 +807,245 @@ export function ErpDataProvider({ children }) {
       return true;
     },
     [state.materials, addToast, currentUser]
+  );
+
+  // --- Stock Reservations ---
+  const createStockReservation = useCallback(
+    (payload) => {
+      const {
+        reservationNumber,
+        reservationDate,
+        reservedBy,
+        productionPlanNumber,
+        planId,
+        workOrderNumber,
+        productName,
+        machineNumber,
+        requiredProductionQuantity,
+        requiredByDate,
+        materialId,
+        materialCode,
+        materialName,
+        materialGrade,
+        unit,
+        warehouse,
+        batchNumber,
+        approvedUsableStock,
+        existingReservedQuantity,
+        netAvailableStock,
+        requiredQuantity,
+        previouslyReservedQuantity,
+        previouslyIssuedQuantity,
+        remainingRequirement,
+        reservedQuantity,
+        remainingAvailableStockAfterReservation,
+        expiryDate,
+        priority,
+        remarks,
+        storageLocation,
+      } = payload;
+
+      const resQty = Number(reservedQuantity) || 0;
+      if (resQty <= 0) {
+        addToast({
+          title: 'Validation Error',
+          message: 'Reservation quantity must be greater than zero.',
+          type: 'error',
+        });
+        return false;
+      }
+
+      const currentMat = state.materials.find((m) => m.id === materialId);
+      if (!currentMat) {
+        addToast({
+          title: 'Material Not Found',
+          message: 'Selected material could not be found.',
+          type: 'error',
+        });
+        return false;
+      }
+
+      setState((prev) => {
+        const matIndex = prev.materials.findIndex((m) => m.id === materialId);
+        if (matIndex === -1) return prev;
+
+        const mat = prev.materials[matIndex];
+        const updatedMat = {
+          ...mat,
+          reservedQty: (mat.reservedQty || 0) + resQty,
+          lastUpdated: nowStamp(),
+        };
+
+        const newReservation = {
+          id: reservationNumber || `RES-${Date.now()}`,
+          reservationNumber: reservationNumber || `RES-${Date.now()}`,
+          reservationDate: reservationDate || todayDate(),
+          reservedBy: reservedBy || `${currentUser.name} (${currentUser.role})`,
+          status: 'Active',
+          productionPlanNumber: productionPlanNumber || planId || '',
+          planId: planId || productionPlanNumber || '',
+          workOrderNumber: workOrderNumber || '',
+          productName: productName || '',
+          machineNumber: machineNumber || '',
+          requiredProductionQuantity: Number(requiredProductionQuantity) || 0,
+          requiredByDate: requiredByDate || '',
+          materialId,
+          materialCode: materialCode || mat.code,
+          materialName: materialName || mat.name,
+          materialGrade: materialGrade || mat.grade || '',
+          unit: unit || mat.uom || 'Kg',
+          warehouse: warehouse || 'Central Warehouse',
+          batchNumber: batchNumber || 'ALL-APPROVED',
+          approvedUsableStock: Number(approvedUsableStock) || mat.approvedPhysicalQty || 0,
+          existingReservedQuantity: Number(existingReservedQuantity) || mat.reservedQty || 0,
+          netAvailableStock: Number(netAvailableStock) || 0,
+          requiredQuantity: Number(requiredQuantity) || 0,
+          previouslyReservedQuantity: Number(previouslyReservedQuantity) || 0,
+          previouslyIssuedQuantity: Number(previouslyIssuedQuantity) || 0,
+          remainingRequirement: Number(remainingRequirement) || 0,
+          reservedQuantity: resQty,
+          consumedQuantity: 0,
+          remainingQuantity: resQty,
+          remainingAvailableStockAfterReservation: Number(remainingAvailableStockAfterReservation) || 0,
+          expiryDate: expiryDate || '',
+          priority: priority || 'Normal',
+          remarks: remarks || '',
+          storageLocation: storageLocation || mat.storageLocation || '',
+          createdAt: nowStamp(),
+          lastUpdated: nowStamp(),
+        };
+
+        const newTxnId = `TXN-${String(prev.materialTransactions.length + 1).padStart(3, '0')}`;
+        const newTxn = {
+          id: newTxnId,
+          materialId,
+          type: 'Reservation',
+          quantity: resQty,
+          status: 'Reserved',
+          reference: `${newReservation.reservationNumber} / ${workOrderNumber || productionPlanNumber || 'Plan'}`,
+          remarks: `Stock reserved for ${productName || 'Production'} (Priority: ${priority || 'Normal'}). ${remarks || ''}`.trim(),
+          performedBy: reservedBy || `${currentUser.name} (${currentUser.role})`,
+          timestamp: nowStamp(),
+          reservationNumber: newReservation.reservationNumber,
+          workOrderNumber: workOrderNumber || '',
+          batchNumber: batchNumber || '',
+          warehouse: warehouse || '',
+        };
+
+        const updatedMaterials = [...prev.materials];
+        updatedMaterials[matIndex] = updatedMat;
+
+        return {
+          ...prev,
+          materials: updatedMaterials,
+          materialTransactions: [newTxn, ...prev.materialTransactions],
+          stockReservations: [newReservation, ...(prev.stockReservations || initialStockReservations)],
+        };
+      });
+
+      addToast({
+        title: 'Stock Reserved Successfully',
+        message: `${reservationNumber}: Reserved ${resQty} ${currentMat.uom} of ${currentMat.name} for ${workOrderNumber || productionPlanNumber}.`,
+        type: 'success',
+      });
+      return true;
+    },
+    [state.materials, addToast, currentUser]
+  );
+
+  const releaseStockReservation = useCallback(
+    (reservationId, releaseReason = 'Plan changed or cancelled') => {
+      const existingRes = (state.stockReservations || initialStockReservations).find(
+        (r) => r.id === reservationId || r.reservationNumber === reservationId
+      );
+
+      if (!existingRes) {
+        addToast({
+          title: 'Reservation Not Found',
+          message: 'Could not find the reservation to release.',
+          type: 'error',
+        });
+        return false;
+      }
+
+      if (existingRes.status === 'Released' || existingRes.status === 'Expired') {
+        addToast({
+          title: 'Already Inactive',
+          message: `Reservation is already marked as ${existingRes.status}.`,
+          type: 'warning',
+        });
+        return false;
+      }
+
+      const unconsumed = Math.max(0, existingRes.reservedQuantity - (existingRes.consumedQuantity || 0));
+
+      setState((prev) => {
+        let updatedMaterials = prev.materials;
+        let newTransactions = prev.materialTransactions;
+
+        if (unconsumed > 0) {
+          const matIndex = prev.materials.findIndex((m) => m.id === existingRes.materialId);
+          if (matIndex !== -1) {
+            const mat = prev.materials[matIndex];
+            const updatedMat = {
+              ...mat,
+              reservedQty: Math.max(0, (mat.reservedQty || 0) - unconsumed),
+              lastUpdated: nowStamp(),
+            };
+            updatedMaterials = [...prev.materials];
+            updatedMaterials[matIndex] = updatedMat;
+
+            const newTxnId = `TXN-${String(prev.materialTransactions.length + 1).padStart(3, '0')}`;
+            const newTxn = {
+              id: newTxnId,
+              materialId: existingRes.materialId,
+              type: 'Release',
+              quantity: -unconsumed,
+              status: 'Released',
+              reference: `${existingRes.reservationNumber} / Released`,
+              remarks: `Reservation released (${releaseReason}). Returned ${unconsumed} ${existingRes.unit} to available stock.`,
+              performedBy: `${currentUser.name} (${currentUser.role})`,
+              timestamp: nowStamp(),
+              reservationNumber: existingRes.reservationNumber,
+              workOrderNumber: existingRes.workOrderNumber || '',
+            };
+            newTransactions = [newTxn, ...prev.materialTransactions];
+          }
+        }
+
+        const currentReservations = prev.stockReservations || initialStockReservations;
+        const updatedReservations = currentReservations.map((r) => {
+          if (r.id === reservationId || r.reservationNumber === reservationId) {
+            return {
+              ...r,
+              status: 'Released',
+              releaseDate: todayDate(),
+              releasedBy: `${currentUser.name} (${currentUser.role})`,
+              releaseReason: releaseReason.trim() || 'Manual release by store manager',
+              remainingQuantity: 0,
+              lastUpdated: nowStamp(),
+              statusNote: `Released: ${releaseReason.trim() || 'Manual release'} (${unconsumed} ${r.unit} returned to pool)`,
+            };
+          }
+          return r;
+        });
+
+        return {
+          ...prev,
+          materials: updatedMaterials,
+          materialTransactions: newTransactions,
+          stockReservations: updatedReservations,
+        };
+      });
+
+      addToast({
+        title: 'Reservation Released',
+        message: `${existingRes.reservationNumber} released. ${unconsumed} ${existingRes.unit} returned to available inventory.`,
+        type: 'success',
+      });
+      return true;
+    },
+    [state.stockReservations, state.materials, addToast, currentUser]
   );
 
   // --- Machines ---
@@ -1433,6 +1784,9 @@ export function ErpDataProvider({ children }) {
         recordMaterialTransaction,
         recordGrnReceipt,
         recordStockOutward,
+        stockReservations: state.stockReservations || initialStockReservations,
+        createStockReservation,
+        releaseStockReservation,
         saveMachine,
         deleteMachine,
         addSchedulesBatch,

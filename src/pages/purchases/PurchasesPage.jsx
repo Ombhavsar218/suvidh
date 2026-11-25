@@ -56,12 +56,22 @@ export function PurchasesPage() {
     searchFields: ['poNumber', 'supplierName', 'materialLabel', 'status'],
   });
 
+  const activeSuppliers = useMemo(
+    () => suppliers.filter((s) => s.status === 'Active'),
+    [suppliers]
+  );
+
+  const activeMaterials = useMemo(
+    () => materials.filter((m) => m.status !== 'Inactive'),
+    [materials]
+  );
+
   const openCreate = () => {
-    const firstMat = materials[0];
+    const firstMat = activeMaterials[0] || materials[0];
     setForm({
       id: '',
       poNumber: `PO-2026-0${47 + purchaseOrders.length}`,
-      supplierId: suppliers[0]?.id || '',
+      supplierId: activeSuppliers[0]?.id || suppliers[0]?.id || '',
       orderDate: '2026-11-09',
       expectedArrival: '2026-11-15',
       status: 'Draft',
@@ -94,7 +104,7 @@ export function PurchasesPage() {
   };
 
   const addLineItem = () => {
-    const firstMat = materials[0];
+    const firstMat = activeMaterials[0] || materials[0];
     if (!firstMat) return;
     setForm((prev) => ({
       ...prev,
@@ -324,7 +334,7 @@ export function PurchasesPage() {
               required
               value={form.supplierId}
               onChange={(e) => setForm({ ...form, supplierId: e.target.value })}
-              options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+              options={activeSuppliers.map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
             />
             <FormInput
               label="Order Date"
@@ -389,7 +399,7 @@ export function PurchasesPage() {
                           onChange={(e) => updateLineItem(idx, 'materialId', e.target.value)}
                           className="w-full px-2 py-1.5 rounded border border-[#535F80]/30 dark:border-slate-700 bg-[#FEFEFE] dark:bg-slate-900 text-xs"
                         >
-                          {materials.map((m) => (
+                          {activeMaterials.map((m) => (
                             <option key={m.id} value={m.id}>
                               {m.code} — {m.name}
                             </option>

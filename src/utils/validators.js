@@ -22,6 +22,48 @@ export function validatePositiveNumber(value, label, allowZero = false) {
   return '';
 }
 
+export function validatePhone(phone, label = 'Phone Number', isRequired = true) {
+  if (!phone || String(phone).trim() === '') {
+    return isRequired ? `${label} is required.` : '';
+  }
+  const clean = String(phone).replace(/[\s\-()]/g, '');
+  const digits = clean.replace(/\D/g, '');
+  if (digits.length < 7 || digits.length > 15) {
+    return 'Enter a valid phone number (7-15 digits).';
+  }
+  return '';
+}
+
+export function validateGstin(gstin) {
+  if (!gstin || String(gstin).trim() === '') return '';
+  const val = String(gstin).trim().toUpperCase();
+  const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+  if (!gstinRegex.test(val)) {
+    return 'Enter a valid 15-digit GSTIN (e.g. 27AAACK1234M1Z5).';
+  }
+  return '';
+}
+
+export function validatePan(pan) {
+  if (!pan || String(pan).trim() === '') return '';
+  const val = String(pan).trim().toUpperCase();
+  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+  if (!panRegex.test(val)) {
+    return 'Enter a valid 10-character PAN (e.g. AAACK1234M).';
+  }
+  return '';
+}
+
+export function validateUrl(url) {
+  if (!url || String(url).trim() === '') return '';
+  const val = String(url).trim();
+  const urlPattern = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/;
+  if (!urlPattern.test(val)) {
+    return 'Enter a valid website URL (e.g. https://supplier.com).';
+  }
+  return '';
+}
+
 export function validateScheduleRow(row, customers, products, existingSchedules) {
   const errors = [];
   const warnings = [];

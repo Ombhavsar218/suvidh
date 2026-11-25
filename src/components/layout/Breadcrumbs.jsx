@@ -39,10 +39,25 @@ export function Breadcrumbs() {
               ? 'New GRN Entry'
               : prevSeg === 'stock-outward' || prevSeg === 'outward'
               ? 'Issue Raw Material'
+              : prevSeg === 'stock-reservation' || prevSeg === 'reservation'
+              ? 'Record Stock Reservation'
+              : prevSeg === 'suppliers'
+              ? 'New Supplier'
+              : prevSeg === 'materials'
+              ? 'New Raw Material'
               : 'New Customer';
         } else if (seg === 'edit') {
           const parentSeg = index > 1 ? segments[index - 2] : '';
-          label = parentSeg === 'bom' ? 'Edit BOM' : parentSeg === 'products' ? 'Edit Product' : 'Edit Customer';
+          label =
+            parentSeg === 'bom'
+              ? 'Edit BOM'
+              : parentSeg === 'products'
+              ? 'Edit Product'
+              : parentSeg === 'suppliers'
+              ? 'Edit Supplier'
+              : parentSeg === 'materials'
+              ? 'Edit Raw Material'
+              : 'Edit Customer';
         }
 
         return (

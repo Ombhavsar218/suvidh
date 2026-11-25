@@ -781,10 +781,12 @@ export function StockInwardFormPage() {
                       required
                       value={line.materialId}
                       onChange={(e) => handleUpdateLine(line.id, 'materialId', e.target.value)}
-                      options={materials.map((m) => ({
-                        value: m.id,
-                        label: `${m.code} — ${m.name} (${m.uom})`,
-                      }))}
+                      options={materials
+                        .filter((m) => m.status !== 'Inactive' || m.id === line.materialId)
+                        .map((m) => ({
+                          value: m.id,
+                          label: `${m.code} — ${m.name} (${m.uom})`,
+                        }))}
                       error={lineError.materialId}
                     />
 

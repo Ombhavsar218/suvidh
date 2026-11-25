@@ -17,6 +17,12 @@ import {
   ExternalLink,
   Layers,
   ArrowRight,
+  Power,
+  ShieldAlert,
+  Ruler,
+  DollarSign,
+  Truck,
+  Building2,
 } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
@@ -29,54 +35,43 @@ import { SearchInput, FilterDropdown } from '../../components/forms/Filters';
 import { StatCard } from '../../components/dashboard/StatCard';
 import { Pagination } from '../../components/common/Pagination';
 import { EmptyState } from '../../components/common/States';
-import { FormInput, FormSelect } from '../../components/forms/FormFields';
 import { useErpData } from '../../context/ErpDataContext';
+import { useApp } from '../../context/AppContext';
 import { getMaterialComputedFields } from '../../services/erpService';
 import { useTableState } from '../../hooks/useTableState';
-import { validateRequired } from '../../utils/validators';
 import { formatCurrency, formatNumber } from '../../utils/formatters';
-
-const CATEGORY_STYLES = {
-  'Alloy Steel': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/50',
-  'Stainless Steel': 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-900/50',
-  'Castings': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
-  'Non-Ferrous': 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/50',
-  'Seals & Fasteners': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50',
-  'Consumables': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-900/50',
-};
-
-function getMaterialInitials(code, name) {
-  if (code && code.startsWith('RM-')) {
-    const parts = code.split('-');
-    if (parts.length >= 2) return parts[1].slice(0, 3).toUpperCase();
-  }
-  if (!name) return 'RM';
-  const words = name.trim().split(/\s+/);
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
-}
-
-const EMPTY_FORM = {
-  code: '',
-  name: '',
-  category: 'Alloy Steel',
-  spec: '',
-  uom: 'Kg',
-  unitCost: 100,
-  reorderLevel: 200,
-  location: 'Rack A-01',
-};
+import {
+  CATEGORY_STYLES,
+  TYPE_STYLES,
+  getMaterialInitials,
+  formatDimensions,
+} from './materialUtils';
 
 export function MaterialsPage() {
   const navigate = useNavigate();
-  const { materials = [], saveMaterial, deleteMaterial } = useErpData();
+  const { addToast } = useApp();
+  const {
+    materials = [],
+    suppliers = [],
+    purchaseOrders = [],
+    materialTransactions = [],
+    boms = [],
+    saveMaterial,
+    deleteMaterial,
+  } = useErpData();
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
   const [viewTarget, setViewTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [viewMode, setViewMode] = useState('table'); // 'table' | 'grid'
+
+  // Map supplier ID to supplier object for rapid display
+  const supplierMap = useMemo(() => {
+    const map = {};
+    suppliers.forEach((s) => {
+      map[s.id] = s;
+    });
+    return map;
+  }, [suppliers]);
 
   const computedMaterials = useMemo(
     () => materials.map(getMaterialComputedFields),
@@ -85,12 +80,12 @@ export function MaterialsPage() {
 
   // Top KPI Metrics
   const healthyCount = useMemo(
-    () => computedMaterials.filter((m) => !m.isLowStock).length,
+    () => computedMaterials.filter((m) => !m.isLowStock && m.status !== 'Inactive').length,
     [computedMaterials]
   );
 
   const lowStockCount = useMemo(
-    () => computedMaterials.filter((m) => m.isLowStock).length,
+    () => computedMaterials.filter((m) => m.isLowStock && m.status !== 'Inactive').length,
     [computedMaterials]
   );
 
@@ -102,60 +97,118 @@ export function MaterialsPage() {
     }, 0);
   }, [computedMaterials]);
 
+  // Unique Filter Lists
   const categories = useMemo(
     () => Array.from(new Set(materials.map((m) => m.category).filter(Boolean))),
+    [materials]
+  );
+
+  const uniqueGrades = useMemo(
+    () => Array.from(new Set(materials.map((m) => m.grade).filter(Boolean))),
     [materials]
   );
 
   const table = useTableState(computedMaterials, {
     initialPageSize: 8,
     initialSortKey: 'code',
-    searchFields: ['code', 'name', 'category', 'spec', 'location'],
+    searchFields: ['code', 'name', 'category', 'grade', 'spec', 'location'],
   });
 
+  // Filter application
+  const filteredMaterials = useMemo(() => {
+    return computedMaterials.filter((m) => {
+      // Grade filter
+      if (table.filters.grade && m.grade !== table.filters.grade) {
+        return false;
+      }
+      // Status filter (Active / Inactive)
+      if (table.filters.status && (m.status || 'Active') !== table.filters.status) {
+        return false;
+      }
+      // Category filter
+      if (table.filters.category && m.category !== table.filters.category) {
+        return false;
+      }
+      // Stock health filter
+      if (table.filters.stockStatus && m.stockStatus !== table.filters.stockStatus) {
+        return false;
+      }
+      return true;
+    });
+  }, [computedMaterials, table.filters]);
+
   const hasActiveFilters = Boolean(
-    table.search || table.filters.category || table.filters.stockStatus
+    table.search ||
+      table.filters.category ||
+      table.filters.grade ||
+      table.filters.status ||
+      table.filters.stockStatus
   );
 
+  // Navigation handlers for Add and Edit
   const openAdd = () => {
-    setForm({
-      ...EMPTY_FORM,
-      code: `RM-NEW-${String(materials.length + 10)}`,
-    });
-    setErrors({});
-    setModalOpen(true);
+    navigate('/materials/new');
   };
 
   const openEdit = (mat, e) => {
     e?.stopPropagation();
-    setForm(mat);
-    setErrors({});
-    setModalOpen(true);
+    navigate(`/materials/${mat.id}/edit`);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    const nextErrors = {
-      code: validateRequired(form.code, 'Material code'),
-      name: validateRequired(form.name, 'Material name'),
-      uom: validateRequired(form.uom, 'Unit of measurement'),
-    };
-    const filtered = Object.fromEntries(
-      Object.entries(nextErrors).filter(([, v]) => Boolean(v))
+  // Toggle Active / Inactive Status
+  const handleToggleStatus = (mat, e) => {
+    e?.stopPropagation();
+    const nextStatus = mat.status === 'Inactive' ? 'Active' : 'Inactive';
+    saveMaterial({
+      ...mat,
+      status: nextStatus,
+    });
+    addToast({
+      title: `Material ${nextStatus}`,
+      message: `"${mat.name}" (${mat.code}) is now ${nextStatus}.`,
+      type: nextStatus === 'Active' ? 'success' : 'info',
+    });
+  };
+
+  // Check if deleteTarget is referenced by active records
+  const deleteTargetReferences = useMemo(() => {
+    if (!deleteTarget) return [];
+    const reasons = [];
+
+    const poMatches = purchaseOrders.filter(
+      (po) =>
+        po.materialId === deleteTarget.id ||
+        po.items?.some((i) => i.materialId === deleteTarget.id)
     );
-    if (Object.keys(filtered).length > 0) {
-      setErrors(filtered);
-      return;
+    if (poMatches.length > 0) {
+      reasons.push(`${poMatches.length} purchase order(s)`);
     }
 
-    saveMaterial({
-      ...form,
-      unitCost: Number(form.unitCost || 0),
-      reorderLevel: Number(form.reorderLevel || 0),
-    });
-    setModalOpen(false);
-  };
+    const txnMatches = materialTransactions.filter(
+      (t) => t.materialId === deleteTarget.id
+    );
+    if (txnMatches.length > 0) {
+      reasons.push(`${txnMatches.length} inventory transaction(s)`);
+    }
 
+    const bomMatches = boms.filter((b) =>
+      b.items?.some((item) => item.materialId === deleteTarget.id)
+    );
+    if (bomMatches.length > 0) {
+      reasons.push(`${bomMatches.length} Bill of Materials (BOM)`);
+    }
+
+    const hasStock =
+      (deleteTarget.approvedPhysicalQty || 0) > 0 ||
+      (deleteTarget.reservedQty || 0) > 0;
+    if (hasStock) {
+      reasons.push('physical or reserved warehouse stock');
+    }
+
+    return reasons;
+  }, [deleteTarget, purchaseOrders, materialTransactions, boms]);
+
+  // Table Columns
   const columns = [
     {
       key: 'code',
@@ -164,48 +217,84 @@ export function MaterialsPage() {
       width: '130px',
       cellClassName: 'whitespace-nowrap',
       render: (r) => (
-        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap inline-block">
+        <span className="font-mono text-xs font-semibold text-[#081F62] dark:text-blue-400 whitespace-nowrap inline-block">
           {r.code}
         </span>
       ),
     },
     {
       key: 'name',
-      label: 'Material Name & Spec',
+      label: 'Material Name & Description',
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-medium text-[#051747] dark:text-slate-100">{r.name}</div>
-          <div className="text-[11px] text-[#535F80] dark:text-slate-400 line-clamp-1">
-            {r.spec}
+          <div className="font-medium text-[#051747] dark:text-slate-100 flex items-center gap-1.5">
+            <span>{r.name}</span>
+            {r.status === 'Inactive' && (
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                Inactive
+              </span>
+            )}
+          </div>
+          <div className="text-[11px] text-[#535F80] dark:text-slate-400 line-clamp-1 mt-0.5">
+            {r.description || r.spec}
           </div>
         </div>
       ),
     },
     {
       key: 'category',
-      label: 'Category',
+      label: 'Category & Type',
       sortable: true,
       render: (r) => (
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
-            CATEGORY_STYLES[r.category] || 'bg-slate-100 text-slate-700 border-slate-200'
-          }`}
-        >
-          {r.category}
+        <div className="flex flex-col items-start gap-1">
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
+              CATEGORY_STYLES[r.category] || 'bg-slate-100 text-slate-700 border-slate-200'
+            }`}
+          >
+            {r.category}
+          </span>
+          {r.materialType && (
+            <span
+              className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold border ${
+                TYPE_STYLES[r.materialType] || TYPE_STYLES['Raw Material']
+              }`}
+            >
+              {r.materialType}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'grade',
+      label: 'Material Grade',
+      sortable: true,
+      render: (r) => (
+        <span className="font-mono text-xs font-semibold text-slate-800 dark:text-slate-200">
+          {r.grade || '—'}
         </span>
       ),
     },
     {
-      key: 'location',
-      label: 'Bin / Rack',
-      sortable: true,
-      render: (r) => (
-        <div className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-mono">
-          <MapPin className="w-3.5 h-3.5 text-[#535F80]" />
-          <span>{r.location || 'Unassigned'}</span>
-        </div>
-      ),
+      key: 'supplier',
+      label: 'Preferred Vendor',
+      render: (r) => {
+        const sup = supplierMap[r.preferredSupplierId];
+        return sup ? (
+          <div className="text-xs">
+            <span className="font-medium text-[#051747] dark:text-slate-200 block truncate max-w-[150px]">
+              {sup.name}
+            </span>
+            <span className="text-[11px] font-mono text-slate-400">
+              {sup.code} {r.leadTimeDays ? `· ${r.leadTimeDays}d lead` : ''}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400 font-mono">Unassigned</span>
+        );
+      },
     },
     {
       key: 'unitCost',
@@ -249,7 +338,7 @@ export function MaterialsPage() {
     },
     {
       key: 'stockStatus',
-      label: 'Status',
+      label: 'Stock Health',
       sortable: true,
       render: (r) => <StatusBadge status={r.stockStatus} />,
     },
@@ -272,6 +361,7 @@ export function MaterialsPage() {
               <Eye className="w-3.5 h-3.5" />
             </button>
           </Tooltip>
+
           <Tooltip content="Edit Material">
             <button
               type="button"
@@ -282,6 +372,22 @@ export function MaterialsPage() {
               <Edit2 className="w-3.5 h-3.5" />
             </button>
           </Tooltip>
+
+          <Tooltip content={r.status === 'Inactive' ? 'Activate Material' : 'Deactivate Material'}>
+            <button
+              type="button"
+              onClick={(e) => handleToggleStatus(r, e)}
+              className={`p-1.5 rounded cursor-pointer transition-colors ${
+                r.status === 'Inactive'
+                  ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                  : 'text-emerald-600 hover:text-slate-500 hover:bg-slate-100'
+              }`}
+              aria-label="Toggle Status"
+            >
+              <Power className="w-3.5 h-3.5" />
+            </button>
+          </Tooltip>
+
           <Tooltip content="Delete Material">
             <button
               type="button"
@@ -301,7 +407,7 @@ export function MaterialsPage() {
     <div className="space-y-5">
       <PageHeader
         title="Raw Materials Master"
-        description="Material grade specifications, standard rates, storage locations, and safety reorder triggers."
+        description="Material grade specifications, standard rates, storage locations, preferred vendors, and safety reorder triggers."
         actions={
           <div className="flex items-center gap-2">
             <SecondaryButton icon={Warehouse} onClick={() => navigate('/inventory')}>
@@ -319,7 +425,7 @@ export function MaterialsPage() {
         <StatCard
           label="Total Materials"
           value={materials.length}
-          sublabel="Master inventory codes"
+          sublabel="Master catalog items"
           icon={Boxes}
           tone="navy"
         />
@@ -354,8 +460,8 @@ export function MaterialsPage() {
           <SearchInput
             value={table.search}
             onChange={table.setSearch}
-            placeholder="Search material code, name, category, spec, bin..."
-            className="w-full sm:w-96 md:w-[420px] lg:w-[480px]"
+            placeholder="Search code, name, category, grade, bin, vendor..."
+            className="w-full sm:w-80 md:w-96 lg:w-[420px]"
           />
           <FilterDropdown
             label="Category"
@@ -364,7 +470,19 @@ export function MaterialsPage() {
             options={categories}
           />
           <FilterDropdown
-            label="Status"
+            label="Grade"
+            value={table.filters.grade}
+            onChange={(val) => table.setFilter('grade', val)}
+            options={uniqueGrades}
+          />
+          <FilterDropdown
+            label="Catalog Status"
+            value={table.filters.status}
+            onChange={(val) => table.setFilter('status', val)}
+            options={['Active', 'Inactive']}
+          />
+          <FilterDropdown
+            label="Stock Health"
             value={table.filters.stockStatus}
             onChange={(val) => table.setFilter('stockStatus', val)}
             options={['Available', 'Low Stock', 'Reserved']}
@@ -383,7 +501,7 @@ export function MaterialsPage() {
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-[#535F80] dark:text-slate-400 hidden sm:inline">
-            Showing <strong className="text-[#051747] dark:text-slate-200">{table.totalItems}</strong> raw material{table.totalItems === 1 ? '' : 's'}
+            Showing <strong className="text-[#051747] dark:text-slate-200">{filteredMaterials.length}</strong> raw material{filteredMaterials.length === 1 ? '' : 's'}
           </span>
           <div className="inline-flex items-center rounded-lg border border-[#535F80]/25 dark:border-slate-800 p-0.5 bg-[#FEFEFE] dark:bg-slate-900">
             <Tooltip content="Table View">
@@ -420,7 +538,7 @@ export function MaterialsPage() {
 
       {/* Main Content: Card Grid View or Table View */}
       {viewMode === 'grid' ? (
-        table.paginatedData.length === 0 ? (
+        filteredMaterials.length === 0 ? (
           <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-xl p-8">
             <EmptyState
               icon={Boxes}
@@ -442,12 +560,13 @@ export function MaterialsPage() {
         ) : (
           <div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {table.paginatedData.map((mat) => {
+              {filteredMaterials.map((mat) => {
                 const isLow = mat.isLowStock;
                 const ratio =
                   mat.reorderLevel > 0
                     ? Math.min(100, Math.round((mat.availableQty / (mat.reorderLevel * 2)) * 100))
                     : 100;
+                const sup = supplierMap[mat.preferredSupplierId];
 
                 return (
                   <div
@@ -465,15 +584,22 @@ export function MaterialsPage() {
                             <h3 className="font-semibold text-sm text-[#051747] dark:text-slate-100 group-hover:text-[#081F62] transition-colors leading-tight line-clamp-1">
                               {mat.name}
                             </h3>
-                            <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap inline-block mt-0.5">
-                              {mat.code}
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                {mat.code}
+                              </span>
+                              {mat.grade && (
+                                <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  {mat.grade}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <StatusBadge status={mat.stockStatus} />
                       </div>
 
-                      {/* Category & Location Badges */}
+                      {/* Category, Form, & Location Badges */}
                       <div className="flex flex-wrap items-center gap-2 mb-3">
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
@@ -483,6 +609,11 @@ export function MaterialsPage() {
                         >
                           {mat.category}
                         </span>
+                        {mat.materialForm && (
+                          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {mat.materialForm}
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono text-[#535F80] dark:text-slate-400 bg-[#E7E9F0]/60 dark:bg-slate-800">
                           <MapPin className="w-3 h-3 text-[#535F80]" />
                           {mat.location || 'Rack -'}
@@ -498,6 +629,16 @@ export function MaterialsPage() {
                           {mat.spec || 'Standard engineering raw material'}
                         </p>
                       </div>
+
+                      {/* Preferred Supplier Box if available */}
+                      {sup && (
+                        <div className="text-xs p-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-900/40 mb-3 flex items-center justify-between">
+                          <span className="text-[11px] text-slate-500">Preferred Vendor:</span>
+                          <span className="font-medium text-[#081F62] dark:text-blue-300 truncate max-w-[170px]">
+                            {sup.name}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Stock Visual Indicator */}
                       <div className="mb-4">
@@ -572,6 +713,22 @@ export function MaterialsPage() {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                         </Tooltip>
+
+                        <Tooltip content={mat.status === 'Inactive' ? 'Activate Material' : 'Deactivate Material'}>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleStatus(mat, e)}
+                            className={`p-1.5 rounded cursor-pointer transition-colors ${
+                              mat.status === 'Inactive'
+                                ? 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                                : 'text-emerald-600 hover:text-slate-500 hover:bg-slate-100'
+                            }`}
+                            aria-label="Toggle Status"
+                          >
+                            <Power className="w-3.5 h-3.5" />
+                          </button>
+                        </Tooltip>
+
                         <Tooltip content="Delete Material">
                           <button
                             type="button"
@@ -588,30 +745,19 @@ export function MaterialsPage() {
                 );
               })}
             </div>
-
-            <div className="mt-4">
-              <Pagination
-                page={table.page}
-                totalPages={table.totalPages}
-                totalItems={table.totalItems}
-                pageSize={table.pageSize}
-                onPageChange={table.setPage}
-                onPageSizeChange={table.setPageSize}
-              />
-            </div>
           </div>
         )
       ) : (
         <DataTable
           columns={columns}
-          data={table.paginatedData}
+          data={filteredMaterials}
           sortKey={table.sortKey}
           sortDir={table.sortDir}
           onSort={table.handleSort}
           pagination={{
             page: table.page,
-            totalPages: table.totalPages,
-            totalItems: table.totalItems,
+            totalPages: Math.ceil(filteredMaterials.length / table.pageSize) || 1,
+            totalItems: filteredMaterials.length,
             pageSize: table.pageSize,
             onPageChange: table.setPage,
             onPageSizeChange: table.setPageSize,
@@ -666,7 +812,7 @@ export function MaterialsPage() {
                   <h3 className="font-bold text-base text-[#051747] dark:text-slate-100">
                     {viewTarget.name}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-800 dark:text-slate-200 whitespace-nowrap">
                       {viewTarget.code}
                     </span>
@@ -678,43 +824,151 @@ export function MaterialsPage() {
                     >
                       {viewTarget.category}
                     </span>
+                    {viewTarget.grade && (
+                      <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-100/70 text-[#081F62] dark:bg-blue-950 dark:text-blue-300 font-semibold border border-blue-200 dark:border-blue-800">
+                        {viewTarget.grade}
+                      </span>
+                    )}
+                    <StatusBadge status={viewTarget.status || 'Active'} size="xs" />
                   </div>
                 </div>
               </div>
               <StatusBadge status={viewTarget.stockStatus} />
             </div>
 
-            {/* Spec & Storage Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900">
-                <span className="text-xs font-semibold text-[#535F80] dark:text-slate-400 block uppercase tracking-wider mb-1">
-                  Technical Specification
-                </span>
-                <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">
-                  {viewTarget.spec || 'Standard specification not specified'}
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#535F80] dark:text-slate-400">Storage Location:</span>
-                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1">
-                    <MapPin className="w-3.5 h-3.5 text-[#081F62]" />
-                    {viewTarget.location || 'Unassigned'}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#535F80] dark:text-slate-400">Unit Rate:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+            {/* Procurement & Commercial Details */}
+            <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2.5">
+              <span className="text-xs font-bold text-[#081F62] dark:text-blue-400 block uppercase tracking-wider">
+                Procurement &amp; Commercial Terms
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block">Standard Unit Cost</span>
+                  <strong className="text-sm font-semibold text-[#051747] dark:text-slate-100">
                     {formatCurrency(viewTarget.unitCost)} / {viewTarget.uom}
-                  </span>
+                  </strong>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#535F80] dark:text-slate-400">Reorder Trigger:</span>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <div>
+                  <span className="text-slate-500 block">Preferred Supplier</span>
+                  <strong className="font-medium text-slate-800 dark:text-slate-200 block truncate">
+                    {supplierMap[viewTarget.preferredSupplierId]?.name || 'Unassigned'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Lead Time</span>
+                  <strong className="font-medium text-slate-800 dark:text-slate-200">
+                    {viewTarget.leadTimeDays ? `${viewTarget.leadTimeDays} Days` : '7 Days'}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Brand / Manufacturer</span>
+                  <strong className="font-medium text-slate-800 dark:text-slate-200">
+                    {viewTarget.brand || 'OEM Standard'}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Inventory Thresholds */}
+            <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2.5">
+              <span className="text-xs font-bold text-[#081F62] dark:text-blue-400 block uppercase tracking-wider">
+                Inventory Configuration &amp; Thresholds
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block">Reorder Trigger</span>
+                  <span className="font-bold text-[#081F62] dark:text-blue-400">
                     {formatNumber(viewTarget.reorderLevel)} {viewTarget.uom}
                   </span>
                 </div>
+                <div>
+                  <span className="text-slate-500 block">Min Stock Level</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {formatNumber(viewTarget.minStock || 0)} {viewTarget.uom}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Max Stock Level</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {formatNumber(viewTarget.maxStock || 0)} {viewTarget.uom}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Safety Buffer</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {formatNumber(viewTarget.safetyStock || 0)} {viewTarget.uom}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Location / Bin</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 inline-flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#081F62]" />
+                    {viewTarget.location || 'Unassigned'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Technical Specifications & Dimensions */}
+            <div className="p-3.5 rounded-lg border border-[#535F80]/20 dark:border-slate-800 bg-[#FEFEFE] dark:bg-slate-900 space-y-2.5">
+              <span className="text-xs font-bold text-[#081F62] dark:text-blue-400 block uppercase tracking-wider">
+                Technical Specifications &amp; Quality Parameters
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block">Standard</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                    {viewTarget.standard || 'ASTM / ASME'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Material Form</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                    {viewTarget.materialForm || 'Bar'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Tolerance</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {viewTarget.tolerance || 'Standard'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Density</span>
+                  <span className="font-mono text-slate-800 dark:text-slate-200">
+                    {viewTarget.density || '7.85 g/cm³'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Form Dimensions Formatted */}
+              {viewTarget.dimensions && (
+                <div className="p-2 rounded bg-slate-50 dark:bg-slate-800 text-xs">
+                  <span className="text-slate-500 block text-[11px]">Calculated Geometry:</span>
+                  <span className="font-mono font-semibold text-[#051747] dark:text-slate-200">
+                    {formatDimensions(viewTarget.dimensions, viewTarget.materialForm) || viewTarget.dimensions.notes || 'Custom dimensions'}
+                  </span>
+                </div>
+              )}
+
+              {/* Quality Tracking Flags */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] text-slate-500 mr-1">Compliance:</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                  viewTarget.requireQc ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}>
+                  QC Quarantine: {viewTarget.requireQc ? 'Required' : 'Bypass'}
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                  viewTarget.batchTracking ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}>
+                  Batch Tracking: {viewTarget.batchTracking ? 'Enforced' : 'Off'}
+                </span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                  viewTarget.heatNumberTracking ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                }`}>
+                  Heat Traceability: {viewTarget.heatNumberTracking ? 'Mandatory' : 'Optional'}
+                </span>
               </div>
             </div>
 
@@ -769,7 +1023,7 @@ export function MaterialsPage() {
             {/* Valuation note */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-[#E7E9F0]/50 dark:bg-slate-800 text-xs text-[#051747] dark:text-slate-200">
               <span className="font-medium">Total Available Usable Valuation:</span>
-              <strong className="text-sm font-bold">
+              <strong className="text-sm font-bold font-mono">
                 {formatCurrency((viewTarget.availableQty || 0) * (viewTarget.unitCost || 0))}
               </strong>
             </div>
@@ -777,108 +1031,65 @@ export function MaterialsPage() {
         </Modal>
       )}
 
-      {/* Add / Edit Material Modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={form.id ? 'Edit Raw Material' : 'Add Raw Material'}
-        size="lg"
-        footer={
-          <>
-            <SecondaryButton onClick={() => setModalOpen(false)}>Cancel</SecondaryButton>
-            <PrimaryButton onClick={handleSave}>Save Material</PrimaryButton>
-          </>
-        }
-      >
-        <form onSubmit={handleSave} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormInput
-            label="Material Code"
-            name="code"
-            required
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value })}
-            error={errors.code}
+      {/* Protective Dialog: Delete Raw Material */}
+      {deleteTarget && (
+        deleteTargetReferences.length > 0 ? (
+          <Modal
+            isOpen={Boolean(deleteTarget)}
+            onClose={() => setDeleteTarget(null)}
+            title="Cannot Delete Raw Material"
+            size="sm"
+            footer={
+              <div className="flex items-center justify-end gap-2 w-full">
+                <SecondaryButton onClick={() => setDeleteTarget(null)}>
+                  Keep Active
+                </SecondaryButton>
+                <PrimaryButton
+                  variant="primary"
+                  onClick={() => {
+                    handleToggleStatus(deleteTarget);
+                    setDeleteTarget(null);
+                  }}
+                >
+                  Deactivate Material Instead
+                </PrimaryButton>
+              </div>
+            }
+          >
+            <div className="space-y-3 text-xs">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200">
+                <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-semibold">Active Manufacturing Records Exist</strong>
+                  <span>
+                    Material <strong>"{deleteTarget.name}" ({deleteTarget.code})</strong> is referenced by{' '}
+                    <strong>{deleteTargetReferences.join(' and ')}</strong>.
+                  </span>
+                </div>
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Permanent deletion is blocked to prevent breaking purchase order history, inventory batch records, or bill of materials formulations. You can deactivate this material to prevent future purchasing.
+              </p>
+            </div>
+          </Modal>
+        ) : (
+          <ConfirmationDialog
+            isOpen={Boolean(deleteTarget)}
+            onClose={() => setDeleteTarget(null)}
+            onConfirm={() => {
+              if (deleteTarget) {
+                deleteMaterial(deleteTarget.id);
+                setDeleteTarget(null);
+              }
+            }}
+            title="Delete Raw Material"
+            message={`Are you sure you want to permanently delete material "${deleteTarget?.code}" (${deleteTarget?.name})? This will remove the material from your master catalog.`}
+            confirmLabel="Delete Material"
+            cancelLabel="Keep Material"
+            variant="danger"
           />
-          <FormInput
-            label="Material Name"
-            name="name"
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            error={errors.name}
-          />
-          <FormSelect
-            label="Category"
-            name="category"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            options={[
-              'Alloy Steel',
-              'Stainless Steel',
-              'Castings',
-              'Non-Ferrous',
-              'Seals & Fasteners',
-              'Consumables',
-            ]}
-          />
-          <FormSelect
-            label="Unit of Measurement"
-            name="uom"
-            required
-            value={form.uom}
-            onChange={(e) => setForm({ ...form, uom: e.target.value })}
-            options={['Kg', 'Nos', 'Mtr', 'Ltr', 'Set']}
-            error={errors.uom}
-          />
-          <FormInput
-            label="Standard Unit Cost (INR)"
-            name="unitCost"
-            type="number"
-            min="0"
-            value={form.unitCost}
-            onChange={(e) => setForm({ ...form, unitCost: e.target.value })}
-          />
-          <FormInput
-            label="Reorder Threshold"
-            name="reorderLevel"
-            type="number"
-            min="0"
-            value={form.reorderLevel}
-            onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })}
-          />
-          <FormInput
-            label="Storage Location / Bin"
-            name="location"
-            placeholder="e.g. Rack A-01, Yard B-04"
-            value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
-          />
-          <FormInput
-            label="Technical Specification"
-            name="spec"
-            placeholder="e.g. Dia 50mm, Bright Drawn, Tensile 850 MPa"
-            value={form.spec}
-            onChange={(e) => setForm({ ...form, spec: e.target.value })}
-          />
-        </form>
-      </Modal>
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={Boolean(deleteTarget)}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (deleteTarget) {
-            deleteMaterial(deleteTarget.id);
-            setDeleteTarget(null);
-          }
-        }}
-        title="Delete Raw Material"
-        message={`Are you sure you want to delete material "${deleteTarget?.code}" (${deleteTarget?.name})? This will remove the material from your local master catalog.`}
-        confirmLabel="Delete Material"
-        cancelLabel="Keep Material"
-        variant="danger"
-      />
+        )
+      )}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import { initialBillingDocuments } from './billingData';
 import { initialFinanceTransactions } from './financeData';
 import { initialNotifications } from './notificationsData';
 import { initialUsers, initialSettings } from './usersData';
+import { initialStockReservations } from './reservationsData';
 
 export const SEED_VERSION = '1.0.0';
 
@@ -25,6 +26,7 @@ export function buildInitialSeedState() {
     products: initialProducts,
     materials: initialMaterials,
     materialTransactions: initialMaterialTransactions,
+    stockReservations: initialStockReservations,
     boms: initialBoms,
     machines: initialMachines,
     suppliers: initialSuppliers,

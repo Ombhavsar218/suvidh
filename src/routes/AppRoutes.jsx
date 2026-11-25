@@ -34,6 +34,9 @@ const BomFormPage = lazy(() =>
 const MaterialsPage = lazy(() =>
   import('../pages/materials/MaterialsPage').then((m) => ({ default: m.MaterialsPage }))
 );
+const MaterialFormPage = lazy(() =>
+  import('../pages/materials/MaterialFormPage').then((m) => ({ default: m.MaterialFormPage }))
+);
 const InventoryPage = lazy(() =>
   import('../pages/materials/InventoryPage').then((m) => ({ default: m.InventoryPage }))
 );
@@ -49,6 +52,12 @@ const StockOutwardPage = lazy(() =>
 const StockOutwardFormPage = lazy(() =>
   import('../pages/materials/StockOutwardFormPage').then((m) => ({ default: m.StockOutwardFormPage }))
 );
+const StockReservationPage = lazy(() =>
+  import('../pages/materials/StockReservationPage').then((m) => ({ default: m.StockReservationPage }))
+);
+const StockReservationFormPage = lazy(() =>
+  import('../pages/materials/StockReservationFormPage').then((m) => ({ default: m.StockReservationFormPage }))
+);
 const MachinesPage = lazy(() =>
   import('../pages/machines/MachinesPage').then((m) => ({ default: m.MachinesPage }))
 );
@@ -57,6 +66,9 @@ const MachineDetailPage = lazy(() =>
 );
 const SuppliersPage = lazy(() =>
   import('../pages/suppliers/SuppliersPage').then((m) => ({ default: m.SuppliersPage }))
+);
+const SupplierFormPage = lazy(() =>
+  import('../pages/suppliers/SupplierFormPage').then((m) => ({ default: m.SupplierFormPage }))
 );
 const SchedulesPage = lazy(() =>
   import('../pages/schedules/SchedulesPage').then((m) => ({ default: m.SchedulesPage }))
@@ -226,6 +238,14 @@ export function AppRoutes() {
           element={<RoleGate moduleKey="materials"><MaterialsPage /></RoleGate>}
         />
         <Route
+          path="/materials/new"
+          element={<RoleGate moduleKey="materials"><MaterialFormPage /></RoleGate>}
+        />
+        <Route
+          path="/materials/:id/edit"
+          element={<RoleGate moduleKey="materials"><MaterialFormPage /></RoleGate>}
+        />
+        <Route
           path="/inventory"
           element={<RoleGate moduleKey="inventory"><InventoryPage /></RoleGate>}
         />
@@ -262,6 +282,22 @@ export function AppRoutes() {
           element={<RoleGate moduleKey="stock-outward"><StockOutwardFormPage /></RoleGate>}
         />
         <Route
+          path="/stock-reservation"
+          element={<RoleGate moduleKey="stock-reservation"><StockReservationPage /></RoleGate>}
+        />
+        <Route
+          path="/stock-reservation/new"
+          element={<RoleGate moduleKey="stock-reservation"><StockReservationFormPage /></RoleGate>}
+        />
+        <Route
+          path="/inventory/reservation"
+          element={<RoleGate moduleKey="stock-reservation"><StockReservationPage /></RoleGate>}
+        />
+        <Route
+          path="/inventory/reservation/new"
+          element={<RoleGate moduleKey="stock-reservation"><StockReservationFormPage /></RoleGate>}
+        />
+        <Route
           path="/machines"
           element={<RoleGate moduleKey="machines"><MachinesPage /></RoleGate>}
         />
@@ -272,6 +308,14 @@ export function AppRoutes() {
         <Route
           path="/suppliers"
           element={<RoleGate moduleKey="suppliers"><SuppliersPage /></RoleGate>}
+        />
+        <Route
+          path="/suppliers/new"
+          element={<RoleGate moduleKey="suppliers"><SupplierFormPage /></RoleGate>}
+        />
+        <Route
+          path="/suppliers/:id/edit"
+          element={<RoleGate moduleKey="suppliers"><SupplierFormPage /></RoleGate>}
         />
 
         <Route

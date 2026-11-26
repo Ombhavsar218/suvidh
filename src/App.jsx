@@ -1,6 +1,7 @@
 import { Component, useEffect, useRef } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { LanguageProvider } from './i18n/LanguageContext';
 import { ErpDataProvider } from './context/ErpDataContext';
 import { ToastContainer } from './components/common/ToastContainer';
 import { AppRoutes } from './routes/AppRoutes';
@@ -79,10 +80,12 @@ export function App() {
     <AppErrorBoundary key="suvidh-erp-root-v3" ref={boundaryRef}>
       <BrowserRouter>
         <AppProvider>
-          <ErpDataProvider>
-            <AppRoutes />
-            <ToastContainer />
-          </ErpDataProvider>
+          <LanguageProvider>
+            <ErpDataProvider>
+              <AppRoutes />
+              <ToastContainer />
+            </ErpDataProvider>
+          </LanguageProvider>
         </AppProvider>
       </BrowserRouter>
     </AppErrorBoundary>

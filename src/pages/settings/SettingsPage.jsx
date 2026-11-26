@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Building2, Bell, Sliders, Lock, RotateCcw } from 'lucide-react';
+import { User, Building2, Bell, Sliders, Lock, RotateCcw, Globe } from 'lucide-react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { PrimaryButton, SecondaryButton } from '../../components/common/Buttons';
 import { Tabs } from '../../components/common/Tabs';
@@ -7,10 +7,12 @@ import { ConfirmationDialog } from '../../components/common/ConfirmationDialog';
 import { FormInput, FormSelect, FormTextarea } from '../../components/forms/FormFields';
 import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export function SettingsPage() {
   const { currentUser, updateCurrentUserProfile, addToast, theme, toggleTheme } = useApp();
   const { settings, updateSettings, resetAllDemoData } = useErpData();
+  const { language, setLanguage, languages, t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState('profile');
   const [resetOpen, setResetOpen] = useState(false);
@@ -349,6 +351,46 @@ export function SettingsPage() {
               <SecondaryButton size="sm" onClick={toggleTheme}>
                 Switch to {theme === 'dark' ? 'Light' : 'Dark'} Theme
               </SecondaryButton>
+            </div>
+
+            {/* Language Preference */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded border border-[#535F80]/20 dark:border-slate-800 text-xs bg-slate-50/50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-[#081F62]/10 dark:bg-blue-950 text-[#081F62] dark:text-blue-400">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-semibold text-[#051747] dark:text-slate-100">
+                    {t('settings.languagePreference', 'Language Preference')}
+                  </div>
+                  <div className="text-[11px] text-[#535F80] dark:text-slate-400">
+                    {t('settings.languageSubtitle', 'Choose display language for navigation, menus, and system labels')}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {languages.map((lang) => (
+                  <button
+                    key={lang.code}
+                    type="button"
+                    onClick={() => {
+                      setLanguage(lang.code);
+                      addToast({
+                        title: `${lang.nativeName} (${lang.label})`,
+                        message: `System language switched to ${lang.label}.`,
+                        type: 'info',
+                      });
+                    }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors cursor-pointer ${
+                      language === lang.code
+                        ? 'bg-[#081F62] text-[#FEFEFE] border-[#081F62] shadow-2xs'
+                        : 'bg-[#FEFEFE] dark:bg-slate-800 text-[#051747] dark:text-slate-200 border-[#535F80]/25 dark:border-slate-700 hover:bg-[#E7E9F0]'
+                    }`}
+                  >
+                    {lang.nativeName}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex justify-end">

@@ -39,7 +39,7 @@ export function NotificationPanel() {
       </Tooltip>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
+        <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-x-auto sm:top-auto sm:right-0 mt-2 w-auto sm:w-96 max-w-[calc(100vw-1.5rem)] bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#E7E9F0] dark:border-slate-800">
             <div>
               <h4 className="text-xs font-semibold text-[#051747] dark:text-slate-100">

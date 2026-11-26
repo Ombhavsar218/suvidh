@@ -3,6 +3,7 @@ import { ChevronDown, User, Settings, Shield, RotateCcw, LogOut, History } from 
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { ROLES } from '../../utils/permissions';
 import { CURRENT_VERSION } from '../../data/changelogData';
 
@@ -12,6 +13,7 @@ export function UserDropdown({ onOpenChangelog }) {
   const navigate = useNavigate();
   const { currentUser, activeRole, switchRole, logout } = useApp();
   const { resetAllDemoData } = useErpData();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -43,7 +45,7 @@ export function UserDropdown({ onOpenChangelog }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-64 bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-[#E7E9F0] dark:border-slate-800">
             <p className="text-xs font-semibold text-[#051747] dark:text-slate-100">
               {currentUser.name}
@@ -87,7 +89,7 @@ export function UserDropdown({ onOpenChangelog }) {
               className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#051747] dark:text-slate-200 hover:bg-[#E7E9F0]/60 dark:hover:bg-slate-800 cursor-pointer"
             >
               <User className="w-3.5 h-3.5 text-[#535F80]" />
-              User Profile
+              {t('common.profile', 'User Profile')}
             </button>
             <button
               type="button"
@@ -98,7 +100,7 @@ export function UserDropdown({ onOpenChangelog }) {
               className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[#051747] dark:text-slate-200 hover:bg-[#E7E9F0]/60 dark:hover:bg-slate-800 cursor-pointer"
             >
               <Settings className="w-3.5 h-3.5 text-[#535F80]" />
-              System Settings
+              {t('nav.settings', 'System Settings')}
             </button>
             <button
               type="button"
@@ -144,7 +146,7 @@ export function UserDropdown({ onOpenChangelog }) {
               className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
-              Sign Out
+              {t('common.signOut', 'Sign Out')}
             </button>
           </div>
         </div>

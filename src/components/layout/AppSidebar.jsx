@@ -9,6 +9,7 @@ import {
 import { NAVIGATION_GROUPS } from './navigationConfig';
 import { useApp } from '../../context/AppContext';
 import { useErpData } from '../../context/ErpDataContext';
+import { useTranslation } from '../../i18n/LanguageContext';
 import { hasModuleAccess } from '../../utils/permissions';
 import { Tooltip } from '../common/Tooltip';
 import { CURRENT_VERSION } from '../../data/changelogData';
@@ -49,6 +50,7 @@ export function AppSidebar({ onOpenChangelog }) {
     setMobileMenuOpen,
     activeRole,
   } = useApp();
+  const { t } = useTranslation();
   const { settings, notifications } = useErpData();
   const location = useLocation();
 
@@ -153,7 +155,7 @@ export function AppSidebar({ onOpenChangelog }) {
                     onClick={() => toggleGroup(group.key)}
                     className="w-full flex items-center justify-between px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400 hover:text-[#051747] dark:hover:text-slate-200 cursor-pointer"
                   >
-                    <span>{group.label}</span>
+                    <span>{t(`nav.${group.key}`, group.label)}</span>
                     <ChevronDown
                       className={`w-3.5 h-3.5 transition-transform duration-150 ${
                         isExpanded ? '' : '-rotate-90'
@@ -168,6 +170,7 @@ export function AppSidebar({ onOpenChangelog }) {
                   <div className="mt-1 space-y-0.5">
                     {group.items.map((item) => {
                       const Icon = item.icon;
+                      const itemLabel = t(`nav.${item.key}`, item.label);
                       const isActive =
                         location.pathname === item.path ||
                         (item.path !== '/inventory' && location.pathname.startsWith(`${item.path}/`)) ||
@@ -178,7 +181,7 @@ export function AppSidebar({ onOpenChangelog }) {
                       return (
                         <Tooltip
                           key={item.key}
-                          content={item.label}
+                          content={itemLabel}
                           placement="right"
                           disabled={!collapsed}
                           className="block w-full"
@@ -207,7 +210,7 @@ export function AppSidebar({ onOpenChangelog }) {
                                 }`}
                               />
                               {!collapsed && (
-                                <span className="truncate flex-1">{item.label}</span>
+                                <span className="truncate flex-1">{itemLabel}</span>
                               )}
                               {!collapsed && item.key === 'notifications' && unreadCount > 0 && (
                                 <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-red-100 text-red-700 dark:bg-red-950/70 dark:text-red-300 tabular-nums">

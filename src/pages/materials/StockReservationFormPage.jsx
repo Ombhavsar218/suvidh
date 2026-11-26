@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   BookmarkCheck,
@@ -77,9 +77,22 @@ const RACK_LOCATIONS = [
 
 export function StockReservationFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const planIdParam = searchParams.get('planId');
   const materialIdParam = searchParams.get('materialId');
+  const fromParam = searchParams.get('from');
+
+  const isFromInventory = useMemo(() => {
+    return (
+      fromParam === 'inventory' ||
+      location.state?.from === '/inventory' ||
+      location.pathname.startsWith('/inventory') ||
+      Boolean(materialIdParam && !planIdParam && !fromParam)
+    );
+  }, [fromParam, location.state, location.pathname, materialIdParam, planIdParam]);
+
+  const returnPath = isFromInventory ? '/inventory' : '/stock-reservation';
 
   const { currentUser, addToast } = useApp();
   const {
@@ -566,11 +579,18 @@ export function StockReservationFormPage() {
       <PageHeader
         title="Record Stock Reservation"
         subtitle="Lock and allocate quality-approved raw material stock for scheduled production plans and work orders."
-        breadcrumbs={[
-          { label: 'Inventory', to: '/inventory' },
-          { label: 'Stock Reservations', to: '/stock-reservation' },
-          { label: 'New Stock Reservation' },
-        ]}
+        breadcrumbs={
+          isFromInventory
+            ? [
+                { label: 'Inventory', to: '/inventory' },
+                { label: 'New Stock Reservation' },
+              ]
+            : [
+                { label: 'Inventory', to: '/inventory' },
+                { label: 'Stock Reservations', to: '/stock-reservation' },
+                { label: 'New Stock Reservation' },
+              ]
+        }
         actions={
           <div className="flex items-center gap-2">
             <SecondaryButton
@@ -579,11 +599,11 @@ export function StockReservationFormPage() {
                 if (enteredQtyNum > 0) {
                   setConfirmCancelOpen(true);
                 } else {
-                  navigate('/stock-reservation');
+                  navigate(returnPath);
                 }
               }}
             >
-              Back to List
+              {isFromInventory ? 'Back to Inventory' : 'Back to List'}
             </SecondaryButton>
             <SecondaryButton icon={Save} onClick={handleSaveDraft}>
               Save Draft
@@ -1161,15 +1181,15 @@ export function StockReservationFormPage() {
         </div>
 
         {/* Bottom Form Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-[#E7E9F0] dark:border-slate-800">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-[#E7E9F0] dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-2">
             <SecondaryButton
               icon={ArrowLeft}
               onClick={() => {
                 if (enteredQtyNum > 0) {
                   setConfirmCancelOpen(true);
                 } else {
-                  navigate('/stock-reservation');
+                  navigate(returnPath);
                 }
               }}
             >
@@ -1180,7 +1200,7 @@ export function StockReservationFormPage() {
             </SecondaryButton>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <SecondaryButton icon={Save} onClick={handleSaveDraft}>
               Save as Draft
             </SecondaryButton>
@@ -1219,7 +1239,7 @@ export function StockReservationFormPage() {
       <ConfirmationDialog
         isOpen={confirmCancelOpen}
         onClose={() => setConfirmCancelOpen(false)}
-        onConfirm={() => navigate('/stock-reservation')}
+        onConfirm={() => navigate(returnPath)}
         title="Discard Unsaved Changes?"
         message="You have entered reservation quantities. Are you sure you want to leave without reserving stock or saving a draft?"
         confirmLabel="Discard & Leave"
@@ -1233,7 +1253,7 @@ export function StockReservationFormPage() {
           isOpen={Boolean(successModalData)}
           onClose={() => {
             setSuccessModalData(null);
-            navigate('/stock-reservation');
+            navigate(returnPath);
           }}
           title="Stock Successfully Reserved"
           subtitle={`Reference: ${successModalData.reservationNumber}`}
@@ -1261,10 +1281,10 @@ export function StockReservationFormPage() {
                 <PrimaryButton
                   onClick={() => {
                     setSuccessModalData(null);
-                    navigate('/stock-reservation');
+                    navigate(returnPath);
                   }}
                 >
-                  View All Reservations
+                  {isFromInventory ? 'Back to Inventory' : 'View All Reservations'}
                 </PrimaryButton>
               </div>
             </div>

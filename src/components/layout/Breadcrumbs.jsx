@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
 import { ROUTE_LABELS } from './navigationConfig';
+import { useTranslation } from '../../i18n/LanguageContext';
 
 export function Breadcrumbs() {
+  const { t } = useTranslation();
   const location = useLocation();
   const segments = location.pathname.split('/').filter(Boolean);
 
@@ -11,7 +13,9 @@ export function Breadcrumbs() {
       <nav className="flex items-center gap-1.5 text-xs text-[#535F80] dark:text-slate-400">
         <Home className="w-3.5 h-3.5 text-[#535F80]" />
         <ChevronRight className="w-3.5 h-3.5 text-[#535F80]/50 dark:text-slate-600" />
-        <span className="font-medium text-[#051747] dark:text-slate-200">Dashboard</span>
+        <span className="font-medium text-[#051747] dark:text-slate-200">
+          {t('nav.dashboard', 'Dashboard')}
+        </span>
       </nav>
     );
   }
@@ -27,37 +31,37 @@ export function Breadcrumbs() {
       {segments.map((seg, index) => {
         const path = `/${segments.slice(0, index + 1).join('/')}`;
         const isLast = index === segments.length - 1;
-        let label = ROUTE_LABELS[seg] || decodeURIComponent(seg);
+        let label = t(`routes.${seg}`, ROUTE_LABELS[seg] || decodeURIComponent(seg));
         if (seg === 'new') {
           const prevSeg = index > 0 ? segments[index - 1] : '';
           label =
             prevSeg === 'bom'
-              ? 'New BOM'
+              ? t('routes.newBom', 'New BOM')
               : prevSeg === 'products'
-              ? 'New Product'
+              ? t('routes.newProduct', 'New Product')
               : prevSeg === 'stock-inward' || prevSeg === 'inward'
-              ? 'New GRN Entry'
+              ? t('routes.newGrn', 'New GRN Entry')
               : prevSeg === 'stock-outward' || prevSeg === 'outward'
-              ? 'Issue Raw Material'
+              ? t('routes.issueMaterial', 'Issue Raw Material')
               : prevSeg === 'stock-reservation' || prevSeg === 'reservation'
-              ? 'Record Stock Reservation'
+              ? t('routes.recordReservation', 'Record Stock Reservation')
               : prevSeg === 'suppliers'
-              ? 'New Supplier'
+              ? t('routes.newSupplier', 'New Supplier')
               : prevSeg === 'materials'
-              ? 'New Raw Material'
-              : 'New Customer';
+              ? t('routes.newMaterial', 'New Raw Material')
+              : t('routes.newCustomer', 'New Customer');
         } else if (seg === 'edit') {
           const parentSeg = index > 1 ? segments[index - 2] : '';
           label =
             parentSeg === 'bom'
-              ? 'Edit BOM'
+              ? t('routes.editBom', 'Edit BOM')
               : parentSeg === 'products'
-              ? 'Edit Product'
+              ? t('routes.editProduct', 'Edit Product')
               : parentSeg === 'suppliers'
-              ? 'Edit Supplier'
+              ? t('routes.editSupplier', 'Edit Supplier')
               : parentSeg === 'materials'
-              ? 'Edit Raw Material'
-              : 'Edit Customer';
+              ? t('routes.editMaterial', 'Edit Raw Material')
+              : t('routes.editCustomer', 'Edit Customer');
         }
 
         return (

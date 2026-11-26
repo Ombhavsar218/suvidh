@@ -321,7 +321,11 @@ export function InventoryPage() {
           <Tooltip content="Record Stock Reservation">
             <button
               type="button"
-              onClick={() => navigate(`/stock-reservation/new?materialId=${r.id}`)}
+              onClick={() =>
+                navigate(`/stock-reservation/new?materialId=${r.id}&from=inventory`, {
+                  state: { from: '/inventory' },
+                })
+              }
               className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[#081F62] dark:text-blue-400 cursor-pointer"
               aria-label="Reserve Material"
             >
@@ -455,7 +459,14 @@ export function InventoryPage() {
             <SecondaryButton icon={SlidersHorizontal} onClick={() => openTxnModal('Adjustment')}>
               Adjustment
             </SecondaryButton>
-            <PrimaryButton icon={Lock} onClick={() => navigate('/stock-reservation/new')}>
+            <PrimaryButton
+              icon={Lock}
+              onClick={() =>
+                navigate('/stock-reservation/new?from=inventory', {
+                  state: { from: '/inventory' },
+                })
+              }
+            >
               Reserve Material
             </PrimaryButton>
           </div>
@@ -765,7 +776,11 @@ export function InventoryPage() {
                             <Tooltip content="Record Stock Reservation">
                               <button
                                 type="button"
-                                onClick={() => navigate(`/stock-reservation/new?materialId=${mat.id}`)}
+                                onClick={() =>
+                                  navigate(`/stock-reservation/new?materialId=${mat.id}&from=inventory`, {
+                                    state: { from: '/inventory' },
+                                  })
+                                }
                                 className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/40 text-[#081F62] dark:text-blue-400 cursor-pointer"
                                 aria-label="Reserve Material"
                               >

@@ -31,15 +31,15 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#051747]/45 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-[#051747]/45 backdrop-blur-[1px]"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
       <div
-        className={`w-full ${MAX_WIDTHS[size] || MAX_WIDTHS.lg} bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl flex flex-col max-h-[90vh]`}
+        className={`w-full ${MAX_WIDTHS[size] || MAX_WIDTHS.lg} bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/25 dark:border-slate-800 rounded-lg shadow-xl flex flex-col max-h-[92vh] sm:max-h-[90vh]`}
       >
-        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-[#E7E9F0] dark:border-slate-800">
+        <div className="flex items-start justify-between gap-4 px-4 py-3 sm:px-5 sm:py-4 border-b border-[#E7E9F0] dark:border-slate-800">
           <div>
             <h3 className="text-base font-semibold text-[#051747] dark:text-slate-100">
               {title}
@@ -60,10 +60,10 @@ export function Modal({
           </button>
         </div>
 
-        <div className="px-5 py-4 overflow-y-auto flex-1">{children}</div>
+        <div className="px-4 py-3 sm:px-5 sm:py-4 overflow-y-auto flex-1">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-[#E7E9F0] dark:border-slate-800 bg-[#E7E9F0]/55 dark:bg-slate-900/50 rounded-b-lg">
+          <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 sm:px-5 sm:py-3.5 border-t border-[#E7E9F0] dark:border-slate-800 bg-[#E7E9F0]/55 dark:bg-slate-900/50 rounded-b-lg">
             {footer}
           </div>
         )}

@@ -35,7 +35,7 @@ export function StatCard({
   return (
     <div
       onClick={onClick}
-      className={`bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-4 shadow-2xs transition-colors print-card ${
+      className={`bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg p-3.5 sm:p-4 shadow-2xs transition-colors print-card ${
         onClick ? 'cursor-pointer hover:border-[#081F62]/50' : ''
       }`}
     >
@@ -44,7 +44,7 @@ export function StatCard({
           <p className="text-xs font-medium text-[#535F80] dark:text-slate-400 truncate">
             {label}
           </p>
-          <p className="text-2xl font-bold text-[#051747] dark:text-slate-100 mt-1.5 tabular-nums tracking-tight">
+          <p className="text-xl sm:text-2xl font-bold text-[#051747] dark:text-slate-100 mt-1 sm:mt-1.5 tabular-nums tracking-tight truncate">
             {value}
           </p>
         </div>

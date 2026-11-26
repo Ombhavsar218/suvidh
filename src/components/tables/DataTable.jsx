@@ -26,7 +26,7 @@ export function DataTable({
 
   return (
     <div className="bg-[#FEFEFE] dark:bg-slate-900 border border-[#535F80]/20 dark:border-slate-800 rounded-lg shadow-2xs overflow-hidden print-card">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto touch-pan-x">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-[#E7E9F0]/70 dark:bg-slate-800/60 border-b border-[#535F80]/20 dark:border-slate-800">
@@ -43,7 +43,7 @@ export function DataTable({
                   <th
                     key={col.key}
                     style={col.width ? { width: col.width } : undefined}
-                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400 whitespace-nowrap ${alignClass} ${
+                    className={`px-3 sm:px-4 py-2.5 sm:py-3 text-[11px] font-semibold uppercase tracking-wider text-[#535F80] dark:text-slate-400 whitespace-nowrap ${alignClass} ${
                       col.sortable && onSort ? 'cursor-pointer select-none hover:text-[#051747] dark:hover:text-slate-200' : ''
                     }`}
                     onClick={() => col.sortable && onSort && onSort(col.key)}
@@ -108,7 +108,7 @@ export function DataTable({
                       <td
                         key={col.key}
                         style={col.width ? { width: col.width } : undefined}
-                        className={`px-4 py-3 text-[#051747] dark:text-slate-200 align-middle ${alignClass} ${
+                        className={`px-3 sm:px-4 py-2.5 sm:py-3 text-[#051747] dark:text-slate-200 align-middle ${alignClass} ${
                           col.numeric ? 'tabular-nums' : ''
                         } ${col.nowrap || col.key === 'code' ? 'whitespace-nowrap' : ''} ${col.cellClassName || ''}`}
                       >
